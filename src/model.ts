@@ -168,6 +168,8 @@ export const statusMap =
   2: "夺魂",
   3: "神罚",
   4: "枪杀",
+  5: "反弹",
+  6: "自尽"
 };
 
 export const defaultPlayer =
