@@ -3,6 +3,7 @@
     <!--操作部分-->
     <div class="operation-container">
       <p>当局总时长：{{getTimeText(roundTime)}}</p>
+      <p>{{ dayIndex }}, {{dayType}}</p>
       <el-scrollbar ref="scrollbar" class="scrollbar">
         <div class="info-container">
           <div v-for="dayInfo in dayInfoList" :key="dayInfo" class="day-info-container" :data-cancel="dayInfo.cancel" :data-hide="dayInfo.hide">
@@ -18,49 +19,115 @@
               <span v-else-if="info.type === `result`" class="info-result">{{info.deadCount > 0 ? `死亡人数：${info.deadCount}` : `无事发生`}}</span>
               <span v-else class="info-text">{{info.text}}</span>
             </div>
-            <div class="step-container">
-              <!--毒-->
-              <div class="step-row" :data-active="dayInfo.stepIndex === 0">
-                <el-icon v-if="dayInfo.stepIndex === 0" color="green"><Right/></el-icon>
-                <el-icon v-else-if="dayInfo.stepIndex > 0" color="green"><Check/></el-icon>
-                <span v-if="dayInfo.poisonCount === 0">没有毒药</span>
-                <span v-else class="step-text">请选择邪恶阵营选择下毒对象...毒药数量：{{poisonCount}}</span>
-                <el-button v-if="dayInfo.stepIndex === 0" size="small" type="primary" @click="nextStepInNight(dayInfo)">下一步</el-button>
+            <div v-if="dayInfo.dayType === `night`" class="step-container">
+              <div v-for="(stepData, index) in dayInfo.stepDataList" :key="stepData" class="step-row">
+                <el-icon v-if="dayInfo.stepIndex === index" color="lightgreen"><Right/></el-icon>
+                <el-icon v-else-if="dayInfo.stepIndex > index" color="lightgreen"><Check/></el-icon>
+                <div class="step-content">
+                  <div v-for="step in stepData" :key="step" class="step-content-row">
+                    <span class="step-type-text">{{step.title}}</span>
+                    <span class="step-player-text">{{step.player}}</span>
+                    <span class="step-text">{{step.text}}</span>
+                  </div>
+                </div>
+                <el-button v-if="dayInfo.stepIndex === index" size="small" type="primary" @click="nextStepInNight(dayInfo)">下一步</el-button>
               </div>
-              <!--刀-->
+              <!--继承和所有验证-->
               <div class="step-row" :data-active="dayInfo.stepIndex === 1">
-                <el-icon v-if="dayInfo.stepIndex === 1" color="green"><Right/></el-icon>
-                <el-icon v-else-if="dayInfo.stepIndex > 1" color="green"><Check/></el-icon>
-                <span class="step-text">请选择邪恶阵营选择夺魂对象</span>
-                <el-button v-if="dayInfo.stepIndex === 1" size="small" type="primary" @click="nextStepInNight(dayInfo)">下一步</el-button>
-              </div>
-              <!--验-->
-              <div class="step-row" :data-active="dayInfo.stepIndex === 2">
-                <el-icon v-if="dayInfo.stepIndex === 2" color="green"><Right/></el-icon>
-                <el-icon v-else-if="dayInfo.stepIndex > 2" color="green"><Check/></el-icon>
-                <span class="step-text">dayInfo.validInfo</span>
-                <el-button v-if="dayInfo.stepIndex === 2" size="small" type="primary" @click="nextStepInNight(dayInfo)">下一步</el-button>
-              </div>
-              <!--守-->
-              <div class="step-row" :data-active="dayInfo.stepIndex === 3">
-                <el-icon v-if="dayInfo.stepIndex === 3" color="green"><Right/></el-icon>
-                <el-icon v-else-if="dayInfo.stepIndex > 3" color="green"><Check/></el-icon>
-                <span class="step-text">请僧侣选择要守护的对象</span>
+                <el-icon v-if="dayInfo.stepIndex === 3" color="lightgreen"><Right/></el-icon>
+                <el-icon v-else-if="dayInfo.stepIndex > 3" color="lightgreen"><Check/></el-icon>
+                <el-icon v-else color="yellow"><Clock/></el-icon>
+                <div class="step-content">
+                  <!--首夜才有F4-->
+                  <template v-if="dayInfo.dayIndex === 0">
+                    <!--洗衣妇-->
+                    <div class="step-content-row">
+                      <span class="step-type-text">洗</span>
+                      <span class="step-text"></span>
+                    </div>
+                    <!--图书管理员-->
+                    <div class="step-content-row">
+                      <span class="step-type-text">图</span>
+                      <span class="step-text"></span>
+                    </div>
+                    <!--调查员-->
+                    <div class="step-content-row">
+                      <span class="step-type-text">调</span>
+                      <span class="step-text"></span>
+                    </div>
+                    <!--厨师-->
+                    <div class="step-content-row">
+                      <span class="step-type-text">厨</span>
+                      <span class="step-text"></span>
+                    </div>
+                  </template>
+                  <!--管家继承-->
+                  <div class="step-content-row">
+                    <span class="step-type-text">继</span>
+                    <span class="step-text"></span>
+                  </div>
+                  <!--酒鬼-->
+                  <div class="step-content-row">
+                    <span class="step-type-text">酒</span>
+                    <span class="step-text"></span>
+                  </div>
+                  <!--守鸦人-->
+                  <div class="step-content-row">
+                    <span class="step-type-text">鸦</span>
+                    <span class="step-text"></span>
+                  </div>
+                  <!--预言家-->
+                  <div class="step-content-row">
+                    <span class="step-type-text">预</span>
+                    <span class="step-text"></span>
+                  </div>
+                  <!--共情-->
+                  <div class="step-content-row">
+                    <span class="step-type-text">共</span>
+                    <span class="step-text"></span>
+                  </div>
+                  <!--掘墓人-->
+                  <div class="step-content-row">
+                    <span class="step-type-text">掘</span>
+                    <span class="step-text"></span>
+                  </div>
+                </div>
                 <el-button v-if="dayInfo.stepIndex === 3" size="small" type="primary" @click="nextStepInNight(dayInfo)">下一步</el-button>
               </div>
+              <div v-if="dayInfo.cancel !== true && dayIndex === dayInfo.dayIndex && dayType === `night` && dayInfo.stepIndex === 2" class="step-row" :data-active="dayInfo.stepIndex === 2">
+                <el-popconfirm title="确定要天亮吗？" @confirm="nextStep">
+                  <template #reference>
+                    <el-button size="small" type="primary">天亮了</el-button>
+                  </template>
+                </el-popconfirm>
+              </div>
             </div>
-            <div v-if="dayIndex === dayInfo.dayIndex && dayType === dayInfo.dayType" class="day-operation-container">
+            <div v-if="dayIndex === dayInfo.dayIndex && dayType === `day`" class="day-operation-container">
+              <el-popconfirm title="确定要入夜吗？" @confirm="nextStep">
+                <template #reference>
+                  <el-button size="small" type="danger">入夜了</el-button>
+                </template>
+              </el-popconfirm>
             </div>
           </div>
         </div>
       </el-scrollbar>
+      <!--切换白天夜晚-->
       <div v-if="isPlaying === true" class="operation-shortcut">
-        <el-button type="primary" @click="nextStep">进入下一阶段({{nextStepText}})</el-button>
-        <el-button type="primary" v-if="dayIndex > 0" @click="prevStep">返回上一阶段({{prevStepText}})</el-button>
+        <el-popconfirm v-if="dayIndex > 0" title="确定要返回到上一步吗？" @confirm="prevStep">
+          <template #reference>
+            <el-button type="primary" >返回上一阶段({{prevStepText}})</el-button>
+          </template>
+        </el-popconfirm>
       </div>
+      <!--有管家的时候添加/减少毒药-->
       <div v-if="isPlaying === true" class="operation-shortcut">
-        <el-button v-if="allPlayerInfo.some(data => data.role.id === `13`)" type="warning" @click="poisonCount++">添加一瓶毒药(管家送毒)</el-button>
-        <el-button v-if="allPlayerInfo.some(data => data.role.id === `13`) && poisonCount > 0" type="warning" @click="poisonCount++">减少一瓶毒药</el-button>
+        <span>管家送毒数：{{housekeeperPoisonCount}}</span>
+        <!--白天才能控制管家毒数-->
+        <template v-if="dayType === `day`">
+          <el-button v-if="allPlayerInfo.some(data => data.role.id === `13`)" type="warning" @click="housekeeperPoisonCount++">添加一瓶毒药(管家送毒)</el-button>
+          <el-button v-if="allPlayerInfo.some(data => data.role.id === `13`) && housekeeperPoisonCount > 0" type="warning" @click="housekeeperPoisonCount++">减少一瓶毒药</el-button>
+        </template>
       </div>
       <div v-if="isPlaying === true" class="operation-shortcut">
         <el-button @click="roll">掷骰子(1-100)</el-button>
@@ -109,7 +176,7 @@
       </div>
       <div v-if="isPlaying === false">
         <el-button v-if="!roleErrorMessage" type="primary" @click="assignRole">分配角色</el-button>
-        <el-button v-if="isPlaying === false && assignRoleData.goodRole?.length > 0" type="danger" @click="clearRole">重置分配</el-button>
+        <el-button v-if="isPlaying === false && assignRoleData.goodRole?.length > 0" type="danger" @click="resetAssignRole">重置分配</el-button>
       </div>
       <div v-if="assignRoleData.goodRole?.length > 0" class="assign-role-container">
         <div class="row">
@@ -158,8 +225,16 @@
         </div>
       </div>
       <div>
-        <el-button v-if="isPlaying === false && assignRoleData.goodRole?.length > 0" type="success" @click="startPlay">开始游戏</el-button>
-        <el-button v-if="isPlaying === true" type="danger" @click="endPlay">结束游戏</el-button>
+        <el-popconfirm v-if="isPlaying === false && assignRoleData.goodRole?.length > 0" title="确定要开始游戏吗？" @confirm="startPlay">
+          <template #reference>
+            <el-button type="success">开始游戏</el-button>
+          </template>
+        </el-popconfirm>
+        <el-popconfirm v-if="isPlaying === true" title="确定要结束游戏吗？" @confirm="endPlay">
+          <template #reference>
+            <el-button type="danger">结束游戏</el-button>
+          </template>
+        </el-popconfirm>
       </div>
     </div>
   </div>
@@ -167,14 +242,15 @@
 
 <script setup lang="ts">
 import {computed, nextTick, reactive, ref, watch} from "vue";
-import {statusMap, defaultPlayer, random, roleList} from "./model.ts";
+import {statusMap, defaultPlayer, random, roleList, hasAlivePlayerByRole, alivePlayerByRole} from "./model.ts";
+import {Clock} from "@element-plus/icons-vue";
 
 const roundTime = ref(0);
 const scrollbar = ref(null);
 const isPlaying = ref(false); //是否开始了
 const dayIndex = ref(0);
 const dayType = ref("night");
-const poisonCount = ref(0);
+const housekeeperPoisonCount = ref(0); //管家毒
 
 const dayInfoList = reactive([]);
 const assignRoleData = reactive({goodCount: 0, normalCount: 0, badCount: 0});
@@ -296,7 +372,7 @@ const getRoleName = player =>
   }
 };
 
-//邪恶阵营分配的情况
+//邪恶阵营分配的提示情况(1为共情两侧,10为连坐)
 const badRoleAssignStatus = computed(() =>
 {
   const indexList = []; //座位号
@@ -371,14 +447,16 @@ const addPlayer = name =>
       allPlayerInfo.push({...newPlayer});
     }
 
-    clearRole();
+    //添加玩家后,重置分配角色
+    resetAssignRole();
   }
   else if (newPlayer.name && allPlayerInfo.some(data => data.name === newPlayer.name) === false)
   {
     allPlayerInfo.push({...newPlayer});
     newPlayer.name = null;
 
-    clearRole();
+    //添加玩家后,重置分配角色
+    resetAssignRole();
   }
 };
 
@@ -387,8 +465,8 @@ const removePlayer = index =>
   allPlayerInfo.splice(index, 1);
 };
 
-//清空角色
-const clearRole = () =>
+//重置分配
+const resetAssignRole = () =>
 {
   delete assignRoleData.goodRole;
   delete assignRoleData.normalRole;
@@ -396,6 +474,11 @@ const clearRole = () =>
 
   allPlayerInfo.forEach(player =>
   {
+    delete player.master;
+    delete player.inherit;
+    delete player.poison;
+    delete player.deadDayIndex;
+    delete player.deadDayType;
     delete player.role;
     delete player.drunkRole;
     delete player.status;
@@ -405,6 +488,9 @@ const clearRole = () =>
 //分配角色
 const assignRole = () =>
 {
+  //分配角色首先清空
+  resetAssignRole();
+
   const goodRole = roleList.filter(data => data.group === 0);
   const normalRole = roleList.filter(data => data.group === 1);
   const badRole = roleList.filter(data =>
@@ -449,10 +535,6 @@ const assignRole = () =>
 
       player.drunkRole = randomRole(otherRole, 1)[0];
     }
-    else
-    {
-      delete player.drunkRole;
-    }
 
     allRoleList.splice(index, 1);
   }
@@ -487,6 +569,7 @@ const assignRole = () =>
 
 const startPlay = () =>
 {
+  //开始游戏时,所有玩家状态设置为存货
   allPlayerInfo.forEach(player =>
   {
     player.status = 0;
@@ -570,13 +653,11 @@ const nextStep = (firstDay) =>
       dayType: "night",
       dayIndex: 0,
       infoList: [],
-      stepIndex: 0,
     });
   }
   else
   {
     const deadPlayer = allPlayerInfo.filter(data => data.deadDayIndex === dayIndex.value && data.deadDayType === dayType.value);
-
     const lastDay = dayInfoList[dayInfoList.length - 1];
 
     clearInterval(lastDay.timer);
@@ -587,6 +668,7 @@ const nextStep = (firstDay) =>
       deadCount: deadPlayer.length
     });
 
+    //现在是夜晚,进入白天
     if (dayType.value === "night")
     {
       dayType.value = "day";
@@ -599,6 +681,7 @@ const nextStep = (firstDay) =>
         infoList: [],
       });
     }
+    //现在是白天,进入夜晚
     else
     {
       dayType.value = "night";
@@ -608,48 +691,26 @@ const nextStep = (firstDay) =>
         dayType: "night",
         dayIndex: dayIndex.value,
         infoList: [],
-        stepIndex: 0,
       });
     }
   }
 
   const currentDay = dayInfoList[dayInfoList.length - 1];
 
+  //进入夜晚后,所有玩家解毒,并开始行动
   if (currentDay.dayType === "night")
   {
-    //是否有下毒者(包括管家继承和管家送毒)
-    const hasPoisonPlayer = allPlayerInfo.some(data =>
+    allPlayerInfo.forEach(player =>
     {
-      if (data.status === 0)
-      {
-        if (data.role.id === "17")
-        {
-          return true;
-        }
-        else if (data.role.id === "13" && data.inherit === true)
-        {
-          const master = allPlayerInfo[data.master];
-
-          return master.role.id === "17";
-        }
-      }
+      player.poison = false;
     });
 
-    if (hasPoisonPlayer === true)
-    {
-      poisonCount.value++;
-    }
-
-    //没有毒,则跳过第一步
-    if (poisonCount.value === 0)
-    {
-      currentDay.stepIndex = 1;
-    }
+    nextStepInNight(currentDay);
   }
-  //切换到白天,毒清零
+  //切换到白天,管家毒清零
   else
   {
-    poisonCount.value = 0;
+    housekeeperPoisonCount.value = 0;
   }
 
   const startNow = Math.floor(Date.now() / 1000);
@@ -663,7 +724,7 @@ const nextStep = (firstDay) =>
 const prevStep = () =>
 {
   const newDayType = dayType.value === "day" ? "night" : "day";
-  const newDayIndex = newDayType === "day" ? dayIndex.value : dayIndex.value - 1;
+  const newDayIndex = dayType.value === "day" ? dayIndex.value - 1 : dayIndex.value;
 
   dayInfoList.forEach(data =>
   {
@@ -692,12 +753,28 @@ const prevStep = () =>
 
   dayInfoList.push
   ({
-    dayType: newDayType,
-    dayIndex: newDayIndex,
-    infoList: []
+    dayType: dayType.value,
+    dayIndex: dayIndex.value,
+    infoList: [],
   });
 
   const currentDay = dayInfoList[dayInfoList.length - 1];
+
+  //进入夜晚后,所有玩家解毒,并开始行动
+  if (currentDay.dayType === "night")
+  {
+    allPlayerInfo.forEach(player =>
+    {
+      delete player.poison;
+    });
+
+    nextStepInNight(currentDay);
+  }
+  //切换到白天,管家毒清零
+  else
+  {
+    housekeeperPoisonCount.value = 0;
+  }
 
   const startNow = Math.floor(Date.now() / 1000);
   currentDay.timer = setInterval(() =>
@@ -709,7 +786,98 @@ const prevStep = () =>
 //夜晚的下一步
 const nextStepInNight = dayInfo =>
 {
+  if (dayInfo.stepIndex == null)
+  {
+    dayInfo.stepIndex = -1;
+  }
 
+  dayInfo.stepIndex++;
+
+  const {stepIndex} = dayInfo;
+
+  //毒守刀
+  if (stepIndex === 0)
+  {
+    createNightStepData(dayInfo);
+  }
+  //继承和其他验证
+  else if (dayInfo.stepIndex === 1)
+  {
+    createNightStepData(dayInfo);
+  }
+};
+
+//生成晚上步骤数据
+const createNightStepData = dayInfo =>
+{
+  const {dayIndex, stepIndex} = dayInfo;
+
+  //毒守刀
+  if (stepIndex === 0)
+  {
+    let poisonCount = 0;
+
+    //首夜固定为1毒
+    if (dayIndex === 0)
+    {
+      poisonCount = 1;
+    }
+    else
+    {
+      poisonCount = housekeeperPoisonCount.value; //继承管家毒
+
+      const hasPoisonPlayer = hasAlivePlayerByRole(allPlayerInfo, "13");
+
+      //有下毒者,毒+1
+      if (hasPoisonPlayer === true)
+      {
+        poisonCount++;
+      }
+    }
+
+    const stepData = [];
+
+    //有毒
+    if (poisonCount > 0)
+    {
+      stepData.push
+      ({
+        title: "毒",
+        text: `请选择邪恶阵营选择下毒对象...毒药数量：${poisonCount}`
+      });
+    }
+
+    const guardPlayer = alivePlayerByRole(allPlayerInfo, "7");
+    //有僧侣
+    if (guardPlayer.length > 0)
+    {
+      stepData.push
+      ({
+        title: "守",
+        player: guardPlayer.map(player => `${allPlayerInfo.indexOf(player).toString().padStart(2, "0")} ${player.name}`).join(" | "),
+        text: "请僧侣选择要守护的对象"
+      });
+    }
+
+    //首夜没有刀
+    if (dayIndex > 0)
+    {
+      stepData.push
+      ({
+        title: "刀",
+        text: "请选择邪恶阵营选择夺魂对象"
+      });
+    }
+
+    dayInfo.stepDataList = [stepData];
+  }
+  //继承和其他验证
+  else if (stepIndex === 1)
+  {
+    const {stepDataList} = dayInfo;
+
+
+  }
 };
 
 watch(dayInfoList, () =>
@@ -803,7 +971,7 @@ const rollPlayer = () =>
   border: 2px solid gold;
   padding: 20px;
   overflow: auto;
-  width: 500px;
+  width: 600px;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
@@ -832,11 +1000,17 @@ const rollPlayer = () =>
       align-items: stretch;
       gap: 8px;
 
+      &:not(:last-child)
+      {
+        padding-bottom: 20px;
+        border-bottom: 4px dashed rgba(255, 255, 255, 0.3);
+      }
+
       &[data-cancel="true"]
       {
         opacity: 0.3;
 
-        *
+        span
         {
           text-decoration: line-through;
         }
@@ -944,9 +1118,74 @@ const rollPlayer = () =>
     .day-operation-container
     {
       display: flex;
-      justify-content: flex-start;
+      justify-content: center;
       align-items: center;
       gap: 8px;
+    }
+  }
+
+  .step-container
+  {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: stretch;
+    gap: 8px;
+
+    .step-row
+    {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      padding: 4px;
+      overflow: hidden;
+      border: 2px solid transparent;
+      min-height: 40px;
+
+      &[data-active="true"]
+      {
+        border-color: lightgreen;
+        border-radius: 8px;
+        background-color: rgba(255, 255, 255, 0.12);
+      }
+
+      .step-content
+      {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: flex-start;
+        gap: 4px;
+
+        .step-content-row
+        {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 8px;
+        }
+      }
+
+      .step-type-text
+      {
+
+      }
+
+      .step-text
+      {
+        flex: 1;
+        word-break: break-all;
+      }
+
+      .step-result
+      {
+        font-size: 20px;
+        flex: 1;
+        text-align: center;
+        color: lightblue;
+      }
     }
   }
 

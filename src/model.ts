@@ -216,3 +216,46 @@ export function random(max)
 {
   return Math.floor(Math.random() * max);
 }
+
+//是否有存活玩家是指定的角色(包括管家继承)
+export function hasAlivePlayerByRole(allPlayer, roleId): any
+{
+  return allPlayer.some(player =>
+  {
+    if (player.status === 0)
+    {
+      if (player.role.id === roleId)
+      {
+        return true;
+      }
+      else if (player.role.id === "13" && player.inherit === true)
+      {
+        const master = allPlayer[player.master];
+
+        return master.role.id === roleId;
+      }
+    }
+  });
+}
+
+//存活玩家是指定的角色(包括管家继承)
+export function alivePlayerByRole(allPlayer, roleId): any
+{
+  return allPlayer.filter(player =>
+  {
+    if (player.status === 0)
+    {
+      if (player.role.id === roleId)
+      {
+        return true;
+      }
+      else if (player.role.id === "13" && player.inherit === true)
+      {
+        const master = allPlayer[player.master];
+
+        return master.role.id === roleId;
+      }
+    }
+  });
+}
+
