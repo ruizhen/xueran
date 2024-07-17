@@ -217,8 +217,8 @@ export function random(max)
   return Math.floor(Math.random() * max);
 }
 
-//是否有存活玩家是指定的角色(包括管家继承)
-export function hasAlivePlayerByRole(allPlayer, roleId): any
+//是否有存活玩家是指定的角色(包括管家继承),参数可以决定是否包含酒鬼
+export function hasAlivePlayerByRole(allPlayer, roleId: string, includeDrunk?: boolean): any
 {
   return allPlayer.some(player =>
   {
@@ -234,12 +234,17 @@ export function hasAlivePlayerByRole(allPlayer, roleId): any
 
         return master.role.id === roleId;
       }
+      //判断酒鬼
+      else if (includeDrunk === true && player.role.id === "14")
+      {
+        return player.drunkRole.id === roleId;
+      }
     }
   });
 }
 
-//存活玩家是指定的角色(包括管家继承)
-export function alivePlayerByRole(allPlayer, roleId): any
+//返回存活且指定的角色(包括管家继承)的玩家,参数可以决定是否包含酒鬼
+export function alivePlayerByRole(allPlayer: any[], roleId: string, includeDrunk?:boolean): any
 {
   return allPlayer.filter(player =>
   {
@@ -255,7 +260,34 @@ export function alivePlayerByRole(allPlayer, roleId): any
 
         return master.role.id === roleId;
       }
+      //判断酒鬼
+      else if (includeDrunk === true && player.role.id === "14")
+      {
+        return player.drunkRole.id === roleId;
+      }
     }
   });
 }
 
+//返回玩家信息文本
+export function getPlayerInfoText(playerList, allPlayer, includeRole?: boolean): any
+{
+  return playerList.map(player =>
+  {
+    const number = (allPlayer.indexOf(player) + 1).toString().padStart(2, "0");
+    const {name} = player;
+
+    //包括身份
+    if (includeRole === true)
+    {
+      const {name, role} = player;
+      const {name: roleName} = role;
+
+      return `${number}-${name}(${roleName})`;
+    }
+    else
+    {
+      return `${number}-${name}`;
+    }
+  }).join(" | ");
+}

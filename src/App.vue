@@ -2,97 +2,54 @@
   <div class="container">
     <!--操作部分-->
     <div class="operation-container">
+      <p>{{canRebound}}</p>
       <p>当局总时长：{{getTimeText(roundTime)}}</p>
-      <p>{{ dayIndex }}, {{dayType}}</p>
       <el-scrollbar ref="scrollbar" class="scrollbar">
         <div class="info-container">
           <div v-for="dayInfo in dayInfoList" :key="dayInfo" class="day-info-container" :data-cancel="dayInfo.cancel" :data-hide="dayInfo.hide">
             <el-button size="small" type="primary" v-if="dayInfo.cancel === true" @click="dayInfo.hide = !dayInfo.hide" class="button">显示/隐藏</el-button>
             <span class="day-title" :data-type="dayInfo.dayType">{{dayTitleText(dayInfo.dayIndex, dayInfo.dayType)}} {{getTimeText(dayInfo.roundTime, false)}}</span>
             <div v-for="info in dayInfo.infoList" :key="info" class="info-row">
+              <!--设置状态-->
               <template v-if="info.type === `status`">
-                <span class="info-text">说书人将</span>
+                <span class="info-text">说书人设置</span>
                 <span class="info-text">{{info.playerNo}}</span>
                 <span class="name">{{info.playerName}}</span>
                 <span class="info-status" :data-status="info.status">{{info.statusText}}</span>
+              </template>
+              <!--下毒/解毒-->
+              <template v-else-if="info.type === `poison`">
+                <span class="info-text">说书人设置</span>
+                <span class="info-text">{{info.playerNo}}</span>
+                <span class="name">{{info.playerName}}</span>
+                <span class="info-poison">{{info.poisonText}}</span>
+              </template>
+              <!--酒鬼骰子-->
+              <template v-else-if="info.type === `drunk`">
+                <span v-if="info.skillType === `normal`" class="info-text">说书人进行酒鬼普通技能掷骰子(1-100)：</span>
+                <span v-else class="info-text">说书人进行酒鬼超级技能掷骰子(1-100)：</span>
+                <span class="info-text">{{info.roll}}，结果判定为：</span>
+                <span class="info-roll" :data-success="info.success">{{info.success === true ? `成功` : `失败`}}</span>
               </template>
               <span v-else-if="info.type === `result`" class="info-result">{{info.deadCount > 0 ? `死亡人数：${info.deadCount}` : `无事发生`}}</span>
               <span v-else class="info-text">{{info.text}}</span>
             </div>
             <div v-if="dayInfo.dayType === `night`" class="step-container">
-              <div v-for="(stepData, index) in dayInfo.stepDataList" :key="stepData" class="step-row">
+              <div v-for="(stepData, index) in dayInfo.stepDataList" :key="stepData" class="step-row" :data-active="dayInfo.stepIndex === index">
                 <el-icon v-if="dayInfo.stepIndex === index" color="lightgreen"><Right/></el-icon>
                 <el-icon v-else-if="dayInfo.stepIndex > index" color="lightgreen"><Check/></el-icon>
                 <div class="step-content">
-                  <div v-for="step in stepData" :key="step" class="step-content-row">
-                    <span class="step-type-text">{{step.title}}</span>
-                    <span class="step-player-text">{{step.player}}</span>
-                    <span class="step-text">{{step.text}}</span>
-                  </div>
+                  <el-popover v-for="step in stepData" :key="step" :width="500" placement="right" :title="step.copyTitle" trigger="hover" :content="step.copyText">
+                    <template #reference>
+                      <div class="step-content-row" @click="copyStepInfo(step)">
+                        <span class="step-type-text">{{step.title}}</span>
+                        <span v-if="step.player" class="step-player-text">{{step.player}}</span>
+                        <span class="step-text">{{step.text}}</span>
+                      </div>
+                    </template>
+                  </el-popover>
                 </div>
                 <el-button v-if="dayInfo.stepIndex === index" size="small" type="primary" @click="nextStepInNight(dayInfo)">下一步</el-button>
-              </div>
-              <!--继承和所有验证-->
-              <div class="step-row" :data-active="dayInfo.stepIndex === 1">
-                <el-icon v-if="dayInfo.stepIndex === 3" color="lightgreen"><Right/></el-icon>
-                <el-icon v-else-if="dayInfo.stepIndex > 3" color="lightgreen"><Check/></el-icon>
-                <el-icon v-else color="yellow"><Clock/></el-icon>
-                <div class="step-content">
-                  <!--首夜才有F4-->
-                  <template v-if="dayInfo.dayIndex === 0">
-                    <!--洗衣妇-->
-                    <div class="step-content-row">
-                      <span class="step-type-text">洗</span>
-                      <span class="step-text"></span>
-                    </div>
-                    <!--图书管理员-->
-                    <div class="step-content-row">
-                      <span class="step-type-text">图</span>
-                      <span class="step-text"></span>
-                    </div>
-                    <!--调查员-->
-                    <div class="step-content-row">
-                      <span class="step-type-text">调</span>
-                      <span class="step-text"></span>
-                    </div>
-                    <!--厨师-->
-                    <div class="step-content-row">
-                      <span class="step-type-text">厨</span>
-                      <span class="step-text"></span>
-                    </div>
-                  </template>
-                  <!--管家继承-->
-                  <div class="step-content-row">
-                    <span class="step-type-text">继</span>
-                    <span class="step-text"></span>
-                  </div>
-                  <!--酒鬼-->
-                  <div class="step-content-row">
-                    <span class="step-type-text">酒</span>
-                    <span class="step-text"></span>
-                  </div>
-                  <!--守鸦人-->
-                  <div class="step-content-row">
-                    <span class="step-type-text">鸦</span>
-                    <span class="step-text"></span>
-                  </div>
-                  <!--预言家-->
-                  <div class="step-content-row">
-                    <span class="step-type-text">预</span>
-                    <span class="step-text"></span>
-                  </div>
-                  <!--共情-->
-                  <div class="step-content-row">
-                    <span class="step-type-text">共</span>
-                    <span class="step-text"></span>
-                  </div>
-                  <!--掘墓人-->
-                  <div class="step-content-row">
-                    <span class="step-type-text">掘</span>
-                    <span class="step-text"></span>
-                  </div>
-                </div>
-                <el-button v-if="dayInfo.stepIndex === 3" size="small" type="primary" @click="nextStepInNight(dayInfo)">下一步</el-button>
               </div>
               <div v-if="dayInfo.cancel !== true && dayIndex === dayInfo.dayIndex && dayType === `night` && dayInfo.stepIndex === 2" class="step-row" :data-active="dayInfo.stepIndex === 2">
                 <el-popconfirm title="确定要天亮吗？" @confirm="nextStep">
@@ -112,47 +69,86 @@
           </div>
         </div>
       </el-scrollbar>
+      <!--快捷语言复制-->
+      <div class="operation-shortcut">
+        <el-button size="small" type="primary" @click="copyText(`该玩家不配吃毒，请换`)">该玩家不配吃毒，请换</el-button>
+        <el-button size="small" type="primary" @click="copyText(`请确认操作`)">请确认操作</el-button>
+        <el-button size="small" type="primary" @click="copyText(`执行操作`)">执行操作</el-button>
+      </div>
       <!--切换白天夜晚-->
       <div v-if="isPlaying === true" class="operation-shortcut">
         <el-popconfirm v-if="dayIndex > 0" title="确定要返回到上一步吗？" @confirm="prevStep">
           <template #reference>
-            <el-button type="primary" >返回上一阶段({{prevStepText}})</el-button>
+            <el-button type="primary">返回上一阶段({{prevStepText}})</el-button>
           </template>
         </el-popconfirm>
       </div>
+      <!--有市长时的弹刀判定-->
+      <div v-if="canRebound" class="operation-shortcut">
+        <el-button type="warning" @click="reboundDetermine">进行弹刀判定</el-button>
+        <el-button v-if="reboundResult.player" type="warning" @click="reboundConfirm">认可该结果并执行</el-button>
+      </div>
       <!--有管家的时候添加/减少毒药-->
-      <div v-if="isPlaying === true" class="operation-shortcut">
+      <div v-if="isPlaying === true && allPlayerInfo.some(data => data.role.id === `13`)" class="operation-shortcut">
         <span>管家送毒数：{{housekeeperPoisonCount}}</span>
         <!--白天才能控制管家毒数-->
         <template v-if="dayType === `day`">
-          <el-button v-if="allPlayerInfo.some(data => data.role.id === `13`)" type="warning" @click="housekeeperPoisonCount++">添加一瓶毒药(管家送毒)</el-button>
-          <el-button v-if="allPlayerInfo.some(data => data.role.id === `13`) && housekeeperPoisonCount > 0" type="warning" @click="housekeeperPoisonCount++">减少一瓶毒药</el-button>
+          <el-button type="warning" @click="housekeeperPoisonCount++">添加一瓶毒药(管家送毒)</el-button>
+          <el-button v-if="housekeeperPoisonCount > 0" type="warning" @click="housekeeperPoisonCount++">减少一瓶毒药</el-button>
         </template>
       </div>
       <div v-if="isPlaying === true" class="operation-shortcut">
-        <el-button @click="roll">掷骰子(1-100)</el-button>
-        <el-button @click="rollPlayer">掷存活玩家号码骰子</el-button>
+        <el-button size="small" @click="roll">掷骰子(1-100)</el-button>
+        <el-button size="small" @click="rollPlayer">掷存活玩家号码骰子</el-button>
+        <el-button size="small" @click="rollDrunk(`normal`)">掷酒鬼普通技能骰子</el-button>
+        <el-button size="small" @click="rollDrunk(`super`)">掷酒鬼超级技能骰子</el-button>
       </div>
     </div>
     <!--玩家信息配置面板-->
     <div class="config-container">
-      <div class="player-select">
+      <div v-show="isPlaying === false" class="player-select">
         <el-button v-for="player in defaultPlayer" :key="player" class="player-add-button" :type="allPlayerInfo.some(data => data.name === player.name) ? `success` : null" size="small" @click="addPlayer(player.name)">添加 {{player.name}}</el-button>
       </div>
-      <div class="player-add-container">
+      <div v-show="isPlaying === false" class="player-add-container">
         <el-input v-model="newPlayer.name" size="small" placeholder="输入新玩家名字"/>
         <el-button size="small" type="primary" @click="addPlayer">添加新玩家</el-button>
       </div>
-      <div class="role-container">
+      <!--酒鬼配置-->
+      <div v-show="isPlaying === false" class="assign-operation-container">
+        <span>酒鬼正确发动技能的概率：</span>
+        <span>普通技能概率(信息|士兵|市长|僧侣)：</span>
+        <el-input-number v-model="drunkConfig.normal" class="number-input" size="small" :step="1" :precision="0" :step-strictly="true" :min="0" :max="100"/>
+        <span>超级技能概率(圣女|枪手)：</span>
+        <el-input-number v-model="drunkConfig.special" class="number-input" size="small" :step="1" :precision="0" :step-strictly="true" :min="0" :max="100"/>
+      </div>
+      <!--酒鬼配置-->
+      <div v-show="isPlaying === true" class="assign-operation-container">
+        <span>酒鬼正确发动技能的概率：普通技能 {{drunkConfig.normal}}%，超级技能 {{drunkConfig.special}}%</span>
+      </div>
+      <!--弹刀配置-->
+      <div v-show="isPlaying === false" class="assign-operation-container">
+        <span>弹刀概率：</span>
+        <span>市长(0则必然不会)：</span>
+        <el-input-number v-model="reboundConfig.self" class="number-input" size="small" :step="1" :precision="0" :step-strictly="true" :min="0"/>
+        <span>士兵(0则必然会)：</span>
+        <el-input-number v-model="reboundConfig.soldier" class="number-input" size="small" :step="1" :precision="0" :step-strictly="true" :min="0"/>
+      </div>
+      <!--弹刀配置-->
+      <div class="assign-operation-container">
+        <span v-if="reboundConfig.self == null || reboundConfig.self === 0">市长必然不会被弹刀，</span>
+        <span v-else>市长被弹刀相对基准概率为{{reboundConfig.self}}%，</span>
+        <span v-if="reboundConfig.soldier == null || reboundConfig.soldier === 0">士兵必然会被弹刀</span>
+        <span v-else>士兵被弹刀相对基准概率为{{reboundConfig.soldier}}%</span>
+      </div>
+      <div v-show="isPlaying === false" class="role-container">
         <span>村民个数：</span>
-        <el-input-number v-model="assignRoleData.goodCount" class="role-number" size="small"  :step="1" :precision="0" :step-strictly="true" :min="2" :max="13"></el-input-number>
+        <el-input-number v-model="assignRoleData.goodCount" class="number-input" size="small"  :step="1" :precision="0" :step-strictly="true" :min="2" :max="13"></el-input-number>
         <span>外来者个数：</span>
-        <el-input-number v-model="assignRoleData.normalCount" class="role-number" size="small"  :step="1" :precision="0" :step-strictly="true" :min="0" :max="4"></el-input-number>
+        <el-input-number v-model="assignRoleData.normalCount" class="number-input" size="small"  :step="1" :precision="0" :step-strictly="true" :min="0" :max="4"></el-input-number>
         <span>爪牙个数：</span>
-        <el-input-number v-model="assignRoleData.badCount" class="role-number" size="small"  :step="1" :precision="0" :step-strictly="true" :min="0" :max="4"></el-input-number>
+        <el-input-number v-model="assignRoleData.badCount" class="number-input" size="small"  :step="1" :precision="0" :step-strictly="true" :min="0" :max="4"></el-input-number>
       </div>
       <p class="role-total">角色总人数：{{assignRoleCount}}，村民：{{assignRoleData.goodCount}}，外来者：{{assignRoleData.normalCount}}，爪牙：{{assignRoleData.badCount}}，小恶魔: 1<span v-if="roleErrorMessage" class="role-error-message">{{roleErrorMessage}}</span></p>
-      <p>玩家总人数：{{allPlayerInfo.length}}</p>
       <!--玩家-->
       <div class="player-container">
         <div v-for="(player, index) in allPlayerInfo" :key="index" class="player-row" :data-status="player.status" :data-group="player.role?.group">
@@ -163,13 +159,21 @@
           <span v-else class="status">{{getStatusText(player.status)}}({{dayTitleText(player.deadDayIndex, player.deadDayType)}})<span v-if="player.poison == true" class="poison">(中毒)</span></span>
           <el-button v-if="isPlaying === false" size="small" type="danger" @click="removePlayer(index)">移除</el-button>
           <template v-if="isPlaying === true">
+            <!--复活-->
             <el-button v-if="player.status !== 0" size="small" @click="setPlayerStatus(player, 0)" type="success">复活</el-button>
-            <el-button size="small" @click="player.poison = !player.poison" color="#5eff6e">{{player.poison === true ? "解毒" : "下毒"}}</el-button>
+            <!--下毒-->
+            <el-button size="small" @click="poisonPlayer(player, player.poison === true)" color="#5eff6e">{{player.poison === true ? "解毒" : "下毒"}}</el-button>
+            <!--处决-->
             <el-button v-if="dayIndex > 0 && player.status === 0" size="small" @click="setPlayerStatus(player, 1)" color="#9b9cff">{{statusMap[1]}}</el-button>
-            <el-button v-if="dayIndex > 0 && player.status === 0" size="small" @click="setPlayerStatus(player, 2)" color="darkred">{{statusMap[2]}}</el-button>
-            <el-button v-if="dayIndex > 0 && allPlayerInfo.some(data => data.role.id === `9`) && player.status === 0" size="small" @click="setPlayerStatus(player, 3)" color="#ffaac4">{{statusMap[3]}}</el-button>
-            <el-button v-if="dayIndex > 0 && allPlayerInfo.some(data => data.role.id === `10`) && player.status === 0" size="small" @click="setPlayerStatus(player, 4)" color="#fff686">{{statusMap[4]}}</el-button>
-            <el-button v-if="dayIndex > 0 && allPlayerInfo.some(data => data.role.id === `12`) && player.status === 0" size="small" @click="setPlayerStatus(player, 5)" color="#5876ff">{{statusMap[5]}}</el-button>
+            <!--夺魂-->
+            <el-button v-if="dayIndex > 0 && player.status === 0 && player.role.group !== 2" size="small" @click="setPlayerStatus(player, 2)" color="darkred">{{statusMap[2]}}</el-button>
+            <!--神罚-->
+            <el-button v-if="dayIndex > 0 && hasAlivePlayerByRole(allPlayerInfo, `9`, true) && player.status === 0" size="small" @click="setPlayerStatus(player, 3)" color="#ffaac4">{{statusMap[3]}}</el-button>
+            <!--枪杀-->
+            <el-button v-if="dayIndex > 0 && hasAlivePlayerByRole(allPlayerInfo, `10`, true) && player.status === 0" size="small" @click="setPlayerStatus(player, 4)" color="#fff686">{{statusMap[4]}}</el-button>
+            <!--反弹-->
+            <el-button v-if="dayIndex > 0 && hasAlivePlayerByRole(allPlayerInfo, `12`, true) && player.status === 0" size="small" @click="setPlayerStatus(player, 5)" color="#5876ff">{{statusMap[5]}}</el-button>
+            <!--自尽-->
             <el-button v-if="dayIndex > 0 && player.status === 0 && player.role.group === 2" size="small" @click="setPlayerStatus(player, 6)" color="#ff4ba7">{{statusMap[6]}}</el-button>
           </template>
         </div>
@@ -224,7 +228,7 @@
           <span v-if="badRoleAssignStatus >= 10" style="color: red">邪恶阵营连坐！</span>
         </div>
       </div>
-      <div>
+      <div class="assign-operation-container">
         <el-popconfirm v-if="isPlaying === false && assignRoleData.goodRole?.length > 0" title="确定要开始游戏吗？" @confirm="startPlay">
           <template #reference>
             <el-button type="success">开始游戏</el-button>
@@ -242,8 +246,17 @@
 
 <script setup lang="ts">
 import {computed, nextTick, reactive, ref, watch} from "vue";
-import {statusMap, defaultPlayer, random, roleList, hasAlivePlayerByRole, alivePlayerByRole} from "./model.ts";
+import {
+  statusMap,
+  defaultPlayer,
+  random,
+  roleList,
+  hasAlivePlayerByRole,
+  alivePlayerByRole,
+  getPlayerInfoText
+} from "./model.ts";
 import {Clock} from "@element-plus/icons-vue";
+import {ElMessage} from "element-plus";
 
 const roundTime = ref(0);
 const scrollbar = ref(null);
@@ -251,6 +264,9 @@ const isPlaying = ref(false); //是否开始了
 const dayIndex = ref(0);
 const dayType = ref("night");
 const housekeeperPoisonCount = ref(0); //管家毒
+const drunkConfig = reactive({normal: 25, special: 0}); //酒鬼正确概率
+const reboundConfig = reactive({self: 50, soldier: 200}); //弹刀配置
+const reboundResult = reactive({}); //弹刀结果
 
 const dayInfoList = reactive([]);
 const assignRoleData = reactive({goodCount: 0, normalCount: 0, badCount: 0});
@@ -372,6 +388,29 @@ const getRoleName = player =>
   }
 };
 
+//能否进行反弹,判定依据是,游戏中,且在夜晚,且场上有存活的市长/酒鬼市长/管家继承,且未中毒
+const canRebound = computed(() =>
+{
+  if (isPlaying.value === true && dayIndex.value >= 0 && dayType.value === "night")
+  {
+    const player = alivePlayerByRole(allPlayerInfo, "12", true)[0];
+
+    //有市长,则判定是否有毒
+    if (player)
+    {
+      return player.poison !== true;
+    }
+    else
+    {
+      return false;
+    }
+  }
+  else
+  {
+    return false;
+  }
+})
+
 //邪恶阵营分配的提示情况(1为共情两侧,10为连坐)
 const badRoleAssignStatus = computed(() =>
 {
@@ -476,6 +515,7 @@ const resetAssignRole = () =>
   {
     delete player.master;
     delete player.inherit;
+    delete player.guard;
     delete player.poison;
     delete player.deadDayIndex;
     delete player.deadDayType;
@@ -575,6 +615,9 @@ const startPlay = () =>
     player.status = 0;
   });
 
+  //清空弹刀结果
+  delete reboundResult.player;
+
   isPlaying.value = true;
 
   dayInfoList.length = 0;
@@ -615,9 +658,7 @@ const setPlayerStatus = (player, status) =>
 {
   const playerNo = (allPlayerInfo.indexOf(player) + 1).toString().padStart(2, "0");
 
-  const {infoList} = dayInfoList[dayInfoList.length - 1];
-
-  infoList.push
+  appendInfo
   ({
     type: "status",
     playerNo,
@@ -662,7 +703,8 @@ const nextStep = (firstDay) =>
 
     clearInterval(lastDay.timer);
 
-    lastDay.infoList.push
+    //添加结论统计
+    appendInfo
     ({
       type: "result",
       deadCount: deadPlayer.length
@@ -695,21 +737,20 @@ const nextStep = (firstDay) =>
     }
   }
 
+  scrollToBottom();
+
   const currentDay = dayInfoList[dayInfoList.length - 1];
 
-  //进入夜晚后,所有玩家解毒,并开始行动
+  //进入夜晚后,开始行动
   if (currentDay.dayType === "night")
   {
-    allPlayerInfo.forEach(player =>
-    {
-      player.poison = false;
-    });
-
     nextStepInNight(currentDay);
   }
-  //切换到白天,管家毒清零
+  //切换到白天,清空反弹结果,管家毒清零
   else
   {
+    delete reboundResult.player;
+
     housekeeperPoisonCount.value = 0;
   }
 
@@ -758,21 +799,20 @@ const prevStep = () =>
     infoList: [],
   });
 
+  scrollToBottom();
+
   const currentDay = dayInfoList[dayInfoList.length - 1];
 
-  //进入夜晚后,所有玩家解毒,并开始行动
+  //进入夜晚后,开始行动
   if (currentDay.dayType === "night")
   {
-    allPlayerInfo.forEach(player =>
-    {
-      delete player.poison;
-    });
-
     nextStepInNight(currentDay);
   }
-  //切换到白天,管家毒清零
+  //切换到白天,清空反弹结果,管家毒清零
   else
   {
+    delete reboundResult.player;
+
     housekeeperPoisonCount.value = 0;
   }
 
@@ -798,6 +838,12 @@ const nextStepInNight = dayInfo =>
   //毒守刀
   if (stepIndex === 0)
   {
+    //第一步首先所有玩家解毒
+    allPlayerInfo.forEach(player =>
+    {
+      delete player.poison;
+    });
+
     createNightStepData(dayInfo);
   }
   //继承和其他验证
@@ -811,16 +857,38 @@ const nextStepInNight = dayInfo =>
 const createNightStepData = dayInfo =>
 {
   const {dayIndex, stepIndex} = dayInfo;
+  const stepData = [];
+
+  //存活的玩家,判定为,未死亡,或者非当晚死的
+  const alivePlayer = allPlayerInfo.filter(data => data.deadDayIndex == null || (data.deadDayIndex === dayIndex && data.deadDayType === "night"));
 
   //毒守刀
   if (stepIndex === 0)
   {
+    //存活玩家里的好人
+    const aliveGoodPlayer = alivePlayer.filter(player => player.role.group !== 2);
+    const aliveGoodPlayerText = getPlayerInfoText(aliveGoodPlayer, allPlayerInfo);
+
     let poisonCount = 0;
 
     //首夜固定为1毒
     if (dayIndex === 0)
     {
+      const player = allPlayerInfo.filter(player => player.role.group === 2);
+      const playerText = getPlayerInfoText(player, allPlayerInfo, true);
+
       poisonCount = 1;
+
+      //邪恶阵营相认
+      stepData.push
+      ({
+        type: "认",
+        player: "邪恶阵营",
+        copyTitle: "请粘贴进邪恶阵营频道",
+        copyText: `请互相认识：${playerText}`,
+        title: "认",
+        text: "请建立邪恶阵营频道并互相认识"
+      });
     }
     else
     {
@@ -835,37 +903,67 @@ const createNightStepData = dayInfo =>
       }
     }
 
-    const stepData = [];
-
     //有毒
     if (poisonCount > 0)
     {
       stepData.push
       ({
+        type: "毒",
+        player: "邪恶阵营",
+        copyTitle: "请粘贴进邪恶阵营频道",
+        copyText: `请选择下毒对象，今晚毒药数量：${poisonCount}，存活好人玩家有：${aliveGoodPlayerText}`,
         title: "毒",
-        text: `请选择邪恶阵营选择下毒对象...毒药数量：${poisonCount}`
+        text: `请邪恶阵营选择下毒对象，今晚毒药数量：${poisonCount}`
       });
     }
 
-    const guardPlayer = alivePlayerByRole(allPlayerInfo, "7");
-    //有僧侣
-    if (guardPlayer.length > 0)
+    //有间谍
+    if (hasAlivePlayerByRole(allPlayerInfo, "18") === true)
     {
+      const playerText = getPlayerInfoText(allPlayerInfo, allPlayerInfo, true);
+
       stepData.push
       ({
+        type: "谍",
+        player: "邪恶阵营",
+        copyTitle: "请粘贴进邪恶阵营频道",
+        copyText: playerText,
+        title: "谍",
+        text: "请给邪恶阵营发送所有玩家身份"
+      });
+    }
+
+    //僧侣一定只有一个存活的
+    const guardPlayer = alivePlayerByRole(allPlayerInfo, "7", true)[0];
+    //有僧侣
+    if (guardPlayer)
+    {
+      const guardPlayerText = getPlayerInfoText([guardPlayer], allPlayerInfo);
+      const targetPlayer = alivePlayer.filter(player => player.name !== guardPlayer.name); //不能守护自己
+      const targetPlayerText = getPlayerInfoText(targetPlayer, allPlayerInfo);
+
+      stepData.push
+      ({
+        type: "守",
+        copyTitle: `请复制给：${guardPlayerText}`,
+        copyText: `请选择要守护的玩家：${targetPlayerText}`,
         title: "守",
-        player: guardPlayer.map(player => `${allPlayerInfo.indexOf(player).toString().padStart(2, "0")} ${player.name}`).join(" | "),
+        player: guardPlayerText,
         text: "请僧侣选择要守护的对象"
       });
     }
 
     //首夜没有刀
-    if (dayIndex > 0)
+    if (dayIndex >= 0)
     {
       stepData.push
       ({
+        type: "刀",
+        player: "邪恶阵营",
+        copyTitle: "请粘贴进邪恶阵营频道",
+        copyText: `请选择夺魂对象，存活好人玩家有：${aliveGoodPlayerText}`,
         title: "刀",
-        text: "请选择邪恶阵营选择夺魂对象"
+        text: "请邪恶阵营选择夺魂对象"
       });
     }
 
@@ -876,25 +974,158 @@ const createNightStepData = dayInfo =>
   {
     const {stepDataList} = dayInfo;
 
-
+    //首先判断进行
   }
 };
 
-watch(dayInfoList, () =>
+//反弹判定
+const reboundDetermine = () =>
 {
-  nextTick(() =>
+  const majorPlayer = alivePlayerByRole(allPlayerInfo, "12", true)[0]; //市长,包括酒鬼市长
+
+  //酒鬼市长,则进行一次酒鬼判定
+  if (majorPlayer.role.id === "14")
   {
-    scrollbar.value.wrapRef.scrollTop = scrollbar.value.wrapRef.scrollHeight;
+    const result = rollDrunk("normal");
+
+    //酒鬼市长技能不发动,则不进行反弹判定
+    if (result === false)
+    {
+      return;
+    }
+  }
+
+  const lastDay = dayInfoList[dayInfoList.length - 1];
+  const {self, soldier} = reboundConfig;
+  const alivePlayer = allPlayerInfo.filter(player => player.status === 0); //存活玩家
+  const soldierPlayer = alivePlayerByRole(allPlayerInfo, "11", true)[0]; //士兵,包括酒鬼士兵
+
+  const eachRollCount = Math.floor(100 / alivePlayer.length);
+  const rollList = new Array(alivePlayer.length).fill(eachRollCount);
+  //有士兵,包括酒鬼士兵,没中毒,才对士兵进行挡刀判定
+  if (soldierPlayer && soldierPlayer.poison !== true)
+  {
+    //是否能发动技能,判定依据是,如果是酒鬼士兵,则掷骰子决定是否发动,否则一定发动
+    const activeSkill = soldierPlayer.role.id === "14" ? rollDrunk("normal") : true;
+
+    //能发动技能,才继续做挡刀判定
+    if (activeSkill === true)
+    {
+      //必然挡刀
+      if (soldier === 0 || soldier == null)
+      {
+        reboundResult.player = soldierPlayer;
+
+        return;
+      }
+      //概率挡刀
+      else
+      {
+        const index = alivePlayer.indexOf(soldierPlayer);
+
+        rollList[index] = Math.floor(eachRollCount * (soldier / 100));
+      }
+    }
+  }
+
+  const majorIndex = alivePlayer.indexOf(majorPlayer);
+  rollList[majorIndex] = Math.floor(eachRollCount * (self / 100)); //市长弹刀概率
+
+  const max = Math.round(rollList.reduce((total, current) => total + current, 0));
+  const roll = random(max) + 1;
+  let count = 0;
+  let targetIndex;
+
+  for (let i = 0; i < rollList.length; i++)
+  {
+    const start = count;
+    count += rollList[i];
+    const end = count;
+
+    if (start !== end && start <= roll && roll <= end)
+    {
+      targetIndex = i;
+      break;
+    }
+  }
+
+  reboundResult.player = alivePlayer[targetIndex];
+
+  const playerText = getPlayerInfoText([reboundResult.player], allPlayerInfo);
+
+  appendInfo
+  ({
+    text: `弹刀判定结果为：${playerText}`,
   });
-});
+};
+
+//确认执行弹刀结果
+const reboundConfirm = () =>
+{
+  const {player} = reboundResult;
+
+
+};
+
+//酒鬼掷骰子
+const rollDrunk = type =>
+{
+  const {normal, special} = drunkConfig;
+  const result = random(100) + 1;
+
+  if (type === "normal")
+  {
+    const success = result > 100 - normal;
+
+    appendInfo
+    ({
+      type: "drunk",
+      roll: result,
+      skillType: type,
+      success,
+    });
+
+    return success;
+  }
+  else
+  {
+    const success = result > 100 - special;
+
+    appendInfo
+    ({
+      type: "drunk",
+      roll: result,
+      skillType: type,
+      success,
+    });
+
+    return success;
+  }
+};
+
+//下毒/解毒玩家
+const poisonPlayer = (player, poison) =>
+{
+  const playerNo = (allPlayerInfo.indexOf(player) + 1).toString().padStart(2, "0");
+
+  player.poison = !poison;
+
+  appendInfo
+  ({
+    type: "poison",
+    playerNo,
+    playerName: player.name,
+    poison,
+    poisonText: poison === false ? "中毒" : "解毒",
+  });
+};
 
 const roll = () =>
 {
-  const number = random(99) + 1;
+  const number = random(100) + 1;
   const text = `说书人进行掷骰子(1-100)：${number}`;
-  const {infoList} = dayInfoList[dayInfoList.length - 1];
 
-  infoList.push
+  appendInfo
   ({
     text: text,
   });
@@ -936,12 +1167,46 @@ const rollPlayer = () =>
   const player = alivePlayerList[number];
   const playerNo = allPlayerInfo.findIndex(data => data.name === player.name);
   const text = `说书人进行掷存活玩家号码骰子：${(playerNo + 1).toString().padStart(2, "0")} - ${player.name}`;
-  const {infoList} = dayInfoList[dayInfoList.length - 1];
 
-  infoList.push
+  appendInfo
   ({
     text: text,
   });
+};
+
+//添加信息
+const appendInfo = info =>
+{
+  const {infoList} = dayInfoList[dayInfoList.length - 1];
+
+  infoList.push(info);
+
+  scrollToBottom();
+};
+
+const scrollToBottom = () =>
+{
+  nextTick(() =>
+  {
+    scrollbar.value.wrapRef.scrollTop = scrollbar.value.wrapRef.scrollHeight;
+  });
+}
+
+//复制行动步骤的信息
+const copyStepInfo = stepData =>
+{
+  const {copyText} = stepData;
+
+  navigator.clipboard.writeText(copyText);
+
+  ElMessage.success(`${copyText} 已经复制进粘贴板`);
+};
+
+const copyText = text =>
+{
+  navigator.clipboard.writeText(text);
+
+  ElMessage.success(`${text} 已经复制进粘贴板`);
 };
 </script>
 
@@ -1105,6 +1370,33 @@ const rollPlayer = () =>
         }
       }
 
+      .info-poison
+      {
+        font-size: 16px;
+        text-align: left;
+        word-break: break-all;
+        margin-left: 8px;
+        color: #5eff6e;
+      }
+
+      .info-roll
+      {
+        font-size: 16px;
+        text-align: left;
+        word-break: break-all;
+        margin-left: 8px;
+
+        &[data-success="true"]
+        {
+          color: lightgreen;
+        }
+
+        &[data-success="false"]
+        {
+          color: red;
+        }
+      }
+
       .info-result
       {
         flex: 1;
@@ -1156,7 +1448,7 @@ const rollPlayer = () =>
         display: flex;
         flex-direction: column;
         justify-content: flex-start;
-        align-items: flex-start;
+        align-items: stretch;
         gap: 4px;
 
         .step-content-row
@@ -1165,6 +1457,12 @@ const rollPlayer = () =>
           justify-content: center;
           align-items: center;
           gap: 8px;
+          cursor: pointer;
+
+          &:hover
+          {
+            background-color: rgba(255, 255, 255, 0.12);
+          }
         }
       }
 
@@ -1228,11 +1526,6 @@ const rollPlayer = () =>
     justify-content: flex-start;
     align-items: center;
     gap: 10px;
-
-    .role-number
-    {
-      width: 100px;
-    }
   }
 
   .role-total
@@ -1581,6 +1874,19 @@ const rollPlayer = () =>
         margin-right: 20px;
       }
     }
+  }
+
+  .assign-operation-container
+  {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .number-input
+  {
+    width: 90px;
   }
 }
 </style>
