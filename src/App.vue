@@ -112,8 +112,8 @@
       <div v-if="isPlaying === true" class="operation-shortcut">
         <el-button size="small" @click="roll">掷骰子(1-100)</el-button>
         <el-button size="small" @click="rollPlayer">掷存活玩家号码骰子</el-button>
-        <el-button size="small" @click="rollDrunk(`normal`)">掷酒鬼普通技能骰子</el-button>
-        <el-button size="small" @click="rollDrunk(`super`)">掷酒鬼超级技能骰子</el-button>
+        <el-button size="small" @click="drunkRoll(`normal`)">掷酒鬼普通技能骰子</el-button>
+        <el-button size="small" @click="drunkRoll(`super`)">掷酒鬼超级技能骰子</el-button>
       </div>
     </div>
     <!--玩家信息配置面板-->
@@ -125,13 +125,21 @@
         <el-input v-model="newPlayer.name" size="small" placeholder="输入新玩家名字"/>
         <el-button size="small" type="primary" @click="addPlayer">添加新玩家</el-button>
       </div>
+      <!--洗衣妇配置-->
+      <div class="assign-operation-container">
+        <template v-if="isPlaying === false">
+          <span>洗衣妇中毒后得知的信息为伪装信息的概率：</span>
+          <el-input-number v-model="washChance" class="number-input" size="small" :step="1" :precision="0" :step-strictly="true" :min="0" :max="100"/>
+        </template>
+        <span v-else>洗衣妇中毒后得知的信息为伪装信息的概率：{{washChance}}%</span>
+      </div>
       <!--酒鬼配置-->
       <div class="assign-operation-container">
         <template v-if="isPlaying === false">
-          <span>酒鬼正确发动技能的概率：</span>
-          <span>普通技能概率(信息|士兵|市长|僧侣)：</span>
+          <span>酒鬼技能成功概率：</span>
+          <span>普通技能(除了超级技能外的)：</span>
           <el-input-number v-model="drunkConfig.normal" class="number-input" size="small" :step="1" :precision="0" :step-strictly="true" :min="0" :max="100"/>
-          <span>超级技能概率(圣女|枪手)：</span>
+          <span>超级技能({{drunkConfig.superRole.map(roleId => roleList.find(role => role.id === roleId).name).join(" | ")}})：</span>
           <el-input-number v-model="drunkConfig.special" class="number-input" size="small" :step="1" :precision="0" :step-strictly="true" :min="0" :max="100"/>
         </template>
         <span v-else>酒鬼正确发动技能的概率：普通技能 {{drunkConfig.normal}}%，超级技能 {{drunkConfig.special}}%</span>
@@ -179,10 +187,19 @@
           <span v-else class="status">{{getStatusText(player.status)}}({{dayTitleText(player.deadDayIndex, player.deadDayType)}})<span v-if="player.poison == true" class="poison">(中毒)</span></span>
           <el-button v-if="isPlaying === false" size="small" type="danger" @click="removePlayer(index)">移除</el-button>
           <template v-if="isPlaying === true">
+            <!--设置伪装-->
+            <el-dropdown v-if="player.status === 0 && player.role.group === 2" trigger="click" @command="role => player.maskRole = role">
+              <el-button type="warning" size="small">伪装</el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item v-for="role in maskRoleList" :key="role" :command="role">{{role.name}}</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
             <!--复活-->
             <el-button v-if="player.status !== 0" size="small" @click="setPlayerStatus(player, 0)" type="success">复活</el-button>
             <!--下毒-->
-            <el-button size="small" @click="poisonPlayer(player)" color="#5eff6e">{{player.poison === true ? "解毒" : "下毒"}}</el-button>
+            <el-button v-if="player.status === 0 && player.role.group !== 2" size="small" @click="poisonPlayer(player)" color="#5eff6e">{{player.poison === true ? "解毒" : "下毒"}}</el-button>
             <!--守卫-->
             <el-button v-if="dayIndex > 0 && dayType === `night` && hasAlivePlayerByRole(allPlayerInfo, `7`, true) && player.status === 0" size="small" @click="guardPlayer(player)" color="#389fff">{{player.guard === true ? "不守" : "守护"}}</el-button>
             <!--处决-->
@@ -277,7 +294,6 @@ import {
   alivePlayerByRole,
   getPlayerInfoText
 } from "./model.ts";
-import {Clock} from "@element-plus/icons-vue";
 import {ElMessage} from "element-plus";
 
 const roundTime = ref(0);
@@ -287,7 +303,8 @@ const dayIndex = ref(0);
 const dayType = ref("night");
 const extraMaskCount = ref(1); //邪恶阵营首夜分发的额外伪装个数
 const housekeeperPoisonCount = ref(0); //管家毒
-const drunkConfig = reactive({normal: 25, special: 0}); //酒鬼正确概率
+const washChance = ref(75); //洗衣中毒后得知伪装信息的概率
+const drunkConfig = reactive({normal: 25, special: 0, superRole: ["9", "10", "12"]}); //酒鬼正确概率,超级技能有圣女枪手市长
 const reboundConfig = reactive({self: 50, soldier: 200}); //弹刀配置
 const reboundResult = reactive({}); //弹刀结果
 
@@ -398,16 +415,22 @@ const getRoleName = player =>
   {
     let roleName = player.role.name;
 
+    //酒鬼身份
     if (player.drunkRole)
     {
       roleName += `(${player.drunkRole.name})`;
+    }
+    //伪装
+    else if (player.maskRole)
+    {
+      roleName += `(${player.maskRole.name})`;
     }
 
     return roleName;
   }
   else
   {
-    return "未分配"
+    return "未分配";
   }
 };
 
@@ -498,6 +521,46 @@ const badRoleAssignStatus = computed(() =>
   return status;
 });
 
+//邪恶阵营的伪装列表
+const maskRoleList = computed(() =>
+{
+  //所有非邪恶阵营未上场的角色,同时排除酒鬼
+  const allOtherRole = roleList.filter(role =>
+  {
+    if (role.group !== 2 && role.id !== "14")
+    {
+      return allPlayerInfo.some(player => player.role.id === role.id) === false;
+    }
+  });
+
+  //伪装个数
+  const maskCount = extraMaskCount.value + assignRoleData.badCount + 1;
+
+  const numberMap = [];
+  for (let i = 0; i < 1000000; i++)
+  {
+    const number = random(allOtherRole.length);
+
+    if (numberMap[number] == null)
+    {
+      numberMap[number] =
+          {
+            id: allOtherRole[number].id,
+            count: 0
+          };
+    }
+
+    numberMap[number].count++;
+  }
+
+  const maskRoleList = numberMap.sort((dataA, dataB) => dataB.count - dataA.count).slice(0, maskCount);
+
+  return maskRoleList.map(data =>
+  {
+    return allOtherRole.find(role => role.id === data.id);
+  });
+});
+
 const addPlayer = name =>
 {
   if (typeof name === "string")
@@ -543,6 +606,7 @@ const resetAssignRole = () =>
     delete player.deadDayIndex;
     delete player.deadDayType;
     delete player.role;
+    delete player.maskRole;
     delete player.drunkRole;
     delete player.status;
   });
@@ -879,6 +943,42 @@ const nextStepInNight = dayInfo =>
     dayInfo.stepIndex = -1;
   }
 
+  //首夜跳转到第二步,要验证是否有穿好伪装
+  if (dayInfo.stepIndex === 0)
+  {
+    //首夜,进行伪装和天毒检查
+    if (dayInfo.dayIndex === 0)
+    {
+      const allHaveMask = allPlayerInfo.every(player =>
+      {
+        if (player.role.group === 2)
+        {
+          return player.maskRole != null;
+        }
+        else
+        {
+          return true;
+        }
+      });
+
+      if (allHaveMask === false)
+      {
+        ElMessage.error("请给所有邪恶阵营的玩家设置好伪装，才能进行下一步！");
+
+        return;
+      }
+
+      const hasPoison = allPlayerInfo.some(player => player.poison === true);
+
+      if (hasPoison === false)
+      {
+        ElMessage.error("请执行天毒操作，才能进行下一步！");
+
+        return;
+      }
+    }
+  }
+
   dayInfo.stepIndex++;
 
   const {stepIndex} = dayInfo;
@@ -913,71 +1013,87 @@ const createNightStepData = dayInfo =>
   //毒守刀
   if (stepIndex === 0)
   {
-    //存活玩家里的好人
-    const aliveGoodPlayer = alivePlayer.filter(player => player.role.group !== 2);
-    const aliveGoodPlayerText = getPlayerInfoText(aliveGoodPlayer, allPlayerInfo);
-
-    let poisonCount = 0;
-
-    //首夜固定为1毒
+    //首夜,相认
     if (dayIndex === 0)
     {
-      const player = allPlayerInfo.filter(player => player.role.group === 2);
-      const playerText = getPlayerInfoText(player, allPlayerInfo, true);
-
-      poisonCount = 1;
-
-      //所有非邪恶阵营未上场的角色,同时排除酒鬼
-      const allOtherRole = roleList.filter(role =>
-      {
-        if (role.group !== 2 && role.id !== "14")
-        {
-          return allPlayerInfo.some(player => player.role.id === role.id) === false;
-        }
-      });
-
-      //伪装个数
-      const maskCount = extraMaskCount.value + assignRoleData.badCount + 1;
-
-      const numberMap = [];
-      for (let i = 0; i < 1000000; i++)
-      {
-        const number = random(allOtherRole.length);
-
-        if (numberMap[number] == null)
-        {
-          numberMap[number] =
-          {
-            id: allOtherRole[number].id,
-            count: 0
-          };
-        }
-
-        numberMap[number].count++;
-      }
-
-      const maskRoleList = numberMap.sort((dataA, dataB) => dataB.count - dataA.count).slice(0, maskCount);
-
-      const maskRoleName = maskRoleList.map(data =>
-      {
-        return allOtherRole.find(role => role.id === data.id).name;
-      }).join(" | ");
-
-      //邪恶阵营相认
-      stepData.push
-      ({
-        type: "认",
-        player: "邪恶阵营",
-        copyTitle: "请粘贴进邪恶阵营频道",
-        copyText: `请互相认识：${playerText}，并选择伪装：${maskRoleName}`,
-        title: "认",
-        text: `请建立邪恶阵营频道并互相认识，并分发伪装：${maskCount} 个`
-      });
+      doKnow(); //相认
     }
+
+    doPoison(); //毒
+
+    //首夜间谍
+    if (dayIndex === 0)
+    {
+      doSpy();
+    }
+
+    //非首夜
+    if (dayIndex > 0)
+    {
+      doGuard(); //僧侣
+
+      doKill(); //刀
+    }
+
+    dayInfo.stepDataList = [stepData];
+  }
+  //继承和其他验证
+  else if (stepIndex === 1)
+  {
+    const {stepDataList} = dayInfo;
+
+    //首夜
+    if (dayIndex === 0)
+    {
+      doWash(); //洗衣妇
+    }
+    else
+    {
+
+    }
+
+    stepDataList.push(stepData);
+  }
+
+  //相认
+  function doKnow()
+  {
+    const player = allPlayerInfo.filter(player => player.role.group === 2);
+    const playerText = getPlayerInfoText(player, allPlayerInfo, true);
+
+    //伪装个数
+    const maskCount = extraMaskCount.value + assignRoleData.badCount + 1;
+    const maskRoleName = maskRoleList.value.map(data => data.name).join(" | ");
+
+    //邪恶阵营相认
+    stepData.push
+    ({
+      type: "认",
+      player: "邪恶阵营",
+      copyTitle: "请粘贴进邪恶阵营频道",
+      copyText: `请互相认识：${playerText}，并选择伪装：${maskRoleName}`,
+      title: "认",
+      text: `请建立邪恶阵营频道并互相认识，并分发伪装：${maskCount} 个`
+    });
+  }
+
+  //毒
+  function doPoison()
+  {
+    let poisonCount;
+
+    //首夜
+    if (dayIndex === 0)
+    {
+      //固定为1毒
+      poisonCount = 1;
+    }
+    //非首夜
     else
     {
       poisonCount = housekeeperPoisonCount.value; //继承管家毒
 
+      //是否有下毒者
       const hasPoisonPlayer = hasAlivePlayerByRole(allPlayerInfo, "13");
 
       //有下毒者,毒+1
@@ -987,9 +1103,15 @@ const createNightStepData = dayInfo =>
       }
     }
 
+    dayInfo.poisonCount = poisonCount; //记录当夜的毒
+
     //有毒
     if (poisonCount > 0)
     {
+      //存活玩家里的好人
+      const aliveGoodPlayer = alivePlayer.filter(player => player.role.group !== 2);
+      const aliveGoodPlayerText = getPlayerInfoText(aliveGoodPlayer, allPlayerInfo);
+
       stepData.push
       ({
         type: "毒",
@@ -1000,7 +1122,11 @@ const createNightStepData = dayInfo =>
         text: `请邪恶阵营选择下毒对象，并在右侧面板执行，今晚毒药数量：${poisonCount}`
       });
     }
+  }
 
+  //间谍
+  function doSpy()
+  {
     //有间谍
     if (hasAlivePlayerByRole(allPlayerInfo, "18") === true)
     {
@@ -1016,81 +1142,162 @@ const createNightStepData = dayInfo =>
         text: "请给邪恶阵营发送所有玩家身份"
       });
     }
+  }
 
-    if (dayIndex > 0)
+  //僧侣
+  function doGuard()
+  {
+    const guardPlayer = alivePlayerByRole(allPlayerInfo, "7", true)[0];
+    //有僧侣
+    if (guardPlayer)
     {
-      const guardPlayer = alivePlayerByRole(allPlayerInfo, "7", true)[0];
-      //有僧侣
-      if (guardPlayer)
-      {
-        const guardPlayerText = getPlayerInfoText([guardPlayer], allPlayerInfo);
-        const targetPlayer = alivePlayer.filter(player => player.name !== guardPlayer.name); //不能守护自己
-        const targetPlayerText = getPlayerInfoText(targetPlayer, allPlayerInfo);
+      const guardPlayerText = getPlayerInfoText([guardPlayer], allPlayerInfo);
+      const targetPlayer = alivePlayer.filter(player => player.name !== guardPlayer.name); //不能守护自己
+      const targetPlayerText = getPlayerInfoText(targetPlayer, allPlayerInfo);
 
-        stepData.push
-        ({
-          type: "守",
-          copyTitle: `请复制给：${guardPlayerText}`,
-          copyText: `请选择要守护的玩家：${targetPlayerText}`,
-          title: "守",
-          player: guardPlayerText,
-          text: "请僧侣选择要守护的对象并在右侧面板执行"
-        });
-      }
-    }
-
-    //首夜没有刀
-    if (dayIndex > 0)
-    {
       stepData.push
       ({
-        type: "刀",
-        player: "邪恶阵营",
-        copyTitle: "请粘贴进邪恶阵营频道",
-        copyText: `请选择夺魂对象，存活好人玩家有：${aliveGoodPlayerText}`,
-        title: "刀",
-        text: "请邪恶阵营选择夺魂对象并在右侧面板执行"
+        type: "守",
+        copyTitle: `请复制给：${guardPlayerText}`,
+        copyText: `请选择要守护的玩家：${targetPlayerText}`,
+        title: "守",
+        player: guardPlayerText,
+        text: "请僧侣选择要守护的对象并在右侧面板执行"
       });
     }
-
-    dayInfo.stepDataList = [stepData];
   }
-  //继承和其他验证
-  else if (stepIndex === 1)
+
+  //刀
+  function doKill()
   {
-    const {stepDataList} = dayInfo;
-    const stepData = [];
+    //存活玩家里的好人
+    const aliveGoodPlayer = alivePlayer.filter(player => player.role.group !== 2);
+    const aliveGoodPlayerText = getPlayerInfoText(aliveGoodPlayer, allPlayerInfo);
 
-    //首夜
-    if (dayIndex === 0)
+    stepData.push
+    ({
+      type: "刀",
+      player: "邪恶阵营",
+      copyTitle: "请粘贴进邪恶阵营频道",
+      copyText: `请选择夺魂对象，存活好人玩家有：${aliveGoodPlayerText}`,
+      title: "刀",
+      text: "请邪恶阵营选择夺魂对象并在右侧面板执行"
+    });
+  }
+
+  //洗衣妇
+  function doWash()
+  {
+    const washPlayer = alivePlayerByRole(allPlayerInfo, "0", true)[0];
+
+    //有洗衣妇
+    if (washPlayer)
     {
-      const washPlayer = alivePlayerByRole(allPlayerInfo, "0", true)[0];
+      const washPlayerText = getPlayerInfoText([washPlayer], allPlayerInfo);
 
-      //有洗衣妇
-      if (washPlayer)
+      let targetPlayer;
+      //中毒
+      if (washPlayer.poison === true)
       {
-        //其他好人
-        const goodPlayer = allPlayerInfo.filter(player => player.role.group === 0 && player !== washPlayer);
+        const roll = random(100) + 1;
+        const bingo = roll > 100 - washChance.value;
 
-
-
-        stepData.push
+        appendInfo
         ({
-          type: "",
-          player: "邪恶阵营",
-          copyTitle: "请粘贴进邪恶阵营频道",
-          copyText: `请选择下毒对象，今晚毒药数量：${poisonCount}，存活好人玩家有：${aliveGoodPlayerText}`,
-          title: "毒",
-          text: `请邪恶阵营选择下毒对象，并在右侧面板执行，今晚毒药数量：${poisonCount}`
+          text: `说书人掷洗衣妇洗伪装骰子：${roll}，判定${bingo === true ? "成功" : "失败"}`
         });
+
+        //洗伪装信息
+        if (bingo === true)
+        {
+          const targetPlayerList = allPlayerInfo.filter(player => player.role.group === 2 && player.maskRole.group === 0);
+
+          if (targetPlayerList.length > 0)
+          {
+            const targetPlayerIndex = random(targetPlayerList.length);
+
+            targetPlayer = targetPlayerList[targetPlayerIndex];
+          }
+          //所有邪恶阵营穿的都是外来者衣服,则无法洗伪装
+          else
+          {
+            const targetPlayerList = allPlayerInfo.filter(player => player.role.group === 0 && player !== washPlayer);
+            const targetPlayerIndex = random(targetPlayerList.length);
+
+            targetPlayer = targetPlayerList[targetPlayerIndex];
+          }
+        }
+        //不洗伪装信息
+        else
+        {
+          const targetPlayerList = allPlayerInfo.filter(player => player.role.group === 0 && player !== washPlayer);
+          const targetPlayerIndex = random(targetPlayerList.length);
+
+          targetPlayer = targetPlayerList[targetPlayerIndex];
+        }
       }
-    }
-    else
-    {
+      //没中毒
+      else
+      {
+        const targetPlayerList = allPlayerInfo.filter(player => player.role.group === 0 && player !== washPlayer);
+        const targetPlayerIndex = random(targetPlayerList.length);
 
-    }
+        targetPlayer = targetPlayerList[targetPlayerIndex];
+      }
 
-    stepDataList.push(stepData);
+      //另外个玩家
+      const otherPlayerList = allPlayerInfo.filter(player => player !== targetPlayer && player !== washPlayer);
+      const otherIndex = random(otherPlayerList.length);
+      const otherPlayer = otherPlayerList[otherIndex];
+
+      let targetRoleName;
+
+      //中毒
+      if (washPlayer.poison === true)
+      {
+        //洗伪装
+        if (targetPlayer.role.group === 2)
+        {
+          targetRoleName = targetPlayer.maskRole.name;
+        }
+        //不洗伪装
+        else
+        {
+          //中毒洗的身份,不包含洗衣妇,也不包含目标本身的角色
+          const fakeRoleList = roleList.filter(role => role.group === 0 && role.id !== "0" && role.id !== targetPlayer.role.id);
+          const fakeRoleIndex = random(fakeRoleList.length);
+          const fakeRole = fakeRoleList[fakeRoleIndex];
+
+          targetRoleName = fakeRole.name;
+        }
+      }
+      //未中毒
+      else
+      {
+        targetRoleName = targetPlayer.role.name;
+      }
+
+      //号码按照从小到大顺序排列
+      const playerList = [targetPlayer, otherPlayer].sort((playerA, playerB) =>
+      {
+        const indexA = allPlayerInfo.indexOf(playerA);
+        const indexB = allPlayerInfo.indexOf(playerB);
+
+        return indexA - indexB;
+      });
+
+      const playerNameText = getPlayerInfoText(playerList, allPlayerInfo);
+
+      stepData.push
+      ({
+        type: "洗",
+        copyTitle: `请复制给：${washPlayerText}`,
+        copyText: `今晚你得知的信息为：${playerNameText} 中有 ${targetRoleName}`,
+        title: "洗",
+        player: washPlayerText,
+        text: "请发送给洗衣妇获取的信息"
+      });
+    }
   }
 };
 
@@ -1102,7 +1309,7 @@ const reboundDetermine = () =>
   //酒鬼市长,则进行一次酒鬼判定
   if (majorPlayer.role.id === "14")
   {
-    const result = rollDrunk("normal");
+    const result = drunkRoll(drunkConfig.superRole.includes("12") === true ? "super" : "normal");
 
     //酒鬼市长技能不发动,则不进行反弹判定
     if (result === false)
@@ -1121,7 +1328,7 @@ const reboundDetermine = () =>
   if (soldierPlayer && soldierPlayer.poison !== true)
   {
     //是否能发动技能,判定依据是,如果是酒鬼士兵,则掷骰子决定是否发动,否则一定发动
-    const activeSkill = soldierPlayer.role.id === "14" ? rollDrunk("normal") : true;
+    const activeSkill = soldierPlayer.role.id === "14" ? drunkRoll("normal") : true;
 
     //能发动技能,才继续做挡刀判定
     if (activeSkill === true)
@@ -1196,7 +1403,7 @@ const reboundConfirm = () =>
 };
 
 //酒鬼掷骰子
-const rollDrunk = type =>
+const drunkRoll = type =>
 {
   const {normal, special} = drunkConfig;
   const result = random(100) + 1;
