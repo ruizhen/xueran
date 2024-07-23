@@ -1061,6 +1061,11 @@ const createNightStepData = dayInfo =>
     //首夜
     if (dayIndex === 0)
     {
+      /**
+       * 这里的判断逻辑应该为,首先判断毒和酒鬼,获取洗衣妇,图书管理员,调查员哪些能发动技能
+       * 然后决定是否要占用其他角色需要随机的角色,能正确发动的,第一优先级占用
+       */
+
       const rollPlayerList = []; //洗衣妇,图书管理员,调查员随机到的玩家,他们之间不能重叠
 
       const libraryPlayer = alivePlayerByRole(allPlayerInfo, "1", true)[0];
@@ -1108,7 +1113,7 @@ const createNightStepData = dayInfo =>
 
       doLibrary(rollPlayerList, badCount); //图书管理员
 
-      doInvestigate();
+      doInvestigate(); //调查员
     }
     else
     {
@@ -1367,35 +1372,10 @@ const createNightStepData = dayInfo =>
 
             targetPlayer = targetPlayerList[targetPlayerIndex];
           }
-          //发动失败,则洗全体村民,但可能洗到伪装
+          //发动失败,则洗全体村民
           else
           {
-            let targetPlayerList;
-
-            //不能随机到爪牙了
-            if (badCount === 0)
-            {
-              targetPlayerList = allPlayerInfo.filter(player =>
-              {
-                if (player !== stepPlayer)
-                {
-                  if (player.role.group === 0)
-                  {
-                    return true;
-                  }
-                  else if (player.role.devil === true && player.maskRole.group === 0)
-                  {
-                    return true;
-                  }
-                }
-              });
-            }
-            //可以随机到爪牙
-            else
-            {
-              targetPlayerList = allPlayerInfo.filter(player => player !== stepPlayer && (player.role.group === 0 || (player.role.group === 2 && player.maskRole.group === 0)));
-            }
-
+            const targetPlayerList = allPlayerInfo.filter(player => player.role.group === 0);
             const targetPlayerIndex = random(targetPlayerList.length);
 
             targetPlayer = targetPlayerList[targetPlayerIndex];
@@ -1513,35 +1493,8 @@ const createNightStepData = dayInfo =>
             otherRoleId = otherPlayer.maskRole.id;
           }
 
-          //中毒洗的身份,不包含洗衣妇,也不包含洗的两个对象中的任意身份
-          const fakeRoleList = roleList.filter(role =>
-          {
-            //必须为村民
-            if (role.group === 0)
-            {
-              //不能是洗衣妇
-              if (role.id !== stepPlayer.role.id)
-              {
-                //不能是目标的身份和另外一个的身份
-                if (role.id !== targetRoleId && role.id !== otherRoleId)
-                {
-                  return true;
-                }
-                else
-                {
-                  return false;
-                }
-              }
-              else
-              {
-                return false;
-              }
-            }
-            else
-            {
-              return false;
-            }
-          });
+          //中毒洗的身份,必须为村民,且不包含洗衣妇,也不包含洗的两个对象中的任意身份
+          const fakeRoleList = roleList.filter(role => role.group === 0 && role.id !== stepPlayer.role.id && role.id !== targetRoleId && role.id !== otherRoleId);
           const fakeRoleIndex = random(fakeRoleList.length);
           const fakeRole = fakeRoleList[fakeRoleIndex];
 
@@ -1554,72 +1507,31 @@ const createNightStepData = dayInfo =>
         //酒鬼
         if (drunk === true)
         {
-          //洗到邪恶阵营则是酒鬼判定失败洗到伪装
-          if (targetPlayer.role.group === 2)
+          const targetRoleId = targetPlayer.role.id; //避开目标的角色
+
+          let otherRoleId;
+          //目标是村民,则避开该角色
+          if (otherPlayer.role.group === 0)
           {
-            targetRoleName = targetPlayer.maskRole.name;
+            otherRoleId = otherPlayer.role.id;
           }
-          //酒鬼,则目标身份随机获取
-          else
+          //目标是酒鬼,则避开酒鬼角色
+          else if (otherPlayer.role.id === "14")
           {
-            let targetRoleId;
-            //目标是村民,则避开该角色
-            if (targetPlayer.role.group === 0)
-            {
-              targetRoleId = targetPlayer.role.id;
-            }
-
-            let otherRoleId;
-            //目标是村民,则避开该角色
-            if (otherPlayer.role.group === 0)
-            {
-              otherRoleId = otherPlayer.role.id;
-            }
-            //目标是酒鬼,则避开酒鬼角色
-            else if (otherPlayer.role.id === "14")
-            {
-              otherRoleId = otherPlayer.drunkRole.id;
-            }
-            //目标是邪恶阵营,且穿的村民伪装,则避开伪装
-            else if (otherPlayer.role.group === 2 && otherPlayer.maskRole.group === 0)
-            {
-              otherRoleId = otherPlayer.maskRole.id;
-            }
-
-            //中毒洗的身份,不包含洗衣妇,也不包含洗的两个对象中的任意身份
-            const fakeRoleList = roleList.filter(role =>
-            {
-              //必须为村民
-              if (role.group === 0)
-              {
-                //不能是洗衣妇
-                if (role.id !== stepPlayer.role.id)
-                {
-                  //不能是目标的身份和另外一个的身份
-                  if (role.id !== targetRoleId && role.id !== otherRoleId)
-                  {
-                    return true;
-                  }
-                  else
-                  {
-                    return false;
-                  }
-                }
-                else
-                {
-                  return false;
-                }
-              }
-              else
-              {
-                return false;
-              }
-            });
-            const fakeRoleIndex = random(fakeRoleList.length);
-            const fakeRole = fakeRoleList[fakeRoleIndex];
-
-            targetRoleName = fakeRole.name;
+            otherRoleId = otherPlayer.drunkRole.id;
           }
+          //目标是邪恶阵营,且穿的村民伪装,则避开伪装
+          else if (otherPlayer.role.group === 2 && otherPlayer.maskRole.group === 0)
+          {
+            otherRoleId = otherPlayer.maskRole.id;
+          }
+
+          //中毒洗的身份,必须为村民,且不包含洗衣妇,也不包含洗的两个对象中的任意身份
+          const fakeRoleList = roleList.filter(role => role.group === 0 && role.id !== stepPlayer.role.id && role.id !== targetRoleId && role.id !== otherRoleId);
+          const fakeRoleIndex = random(fakeRoleList.length);
+          const fakeRole = fakeRoleList[fakeRoleIndex];
+
+          targetRoleName = fakeRole.name;
         }
         //非酒鬼
         else
@@ -1706,7 +1618,7 @@ const createNightStepData = dayInfo =>
           else
           {
             const normalPlayer = allPlayerInfo.filter(player => player.role.group === 1);
-1111111
+
             //没有外来者,则设定为有外来者,随机洗全体
             if (normalPlayer.length === 0)
             {
@@ -1810,12 +1722,21 @@ const createNightStepData = dayInfo =>
         //酒鬼,则判定是否发动成功
         if (stepPlayer.role.id === "14")
         {
-          const result = drunkRoll("normal");
+          let result;
+          //若外来者只有自己,则一定不能发动成功
+          if (assignRoleData.normalCount === 1)
+          {
+            result = false;
+          }
+          else
+          {
+            result = drunkRoll("normal");
+          }
 
           //发动成功
           if (result === true)
           {
-            const targetPlayerList = allPlayerInfo.filter(player => rollPlayerList.includes(player) === false && player.role.group === 1);
+            const targetPlayerList = allPlayerInfo.filter(player => rollPlayerList.includes(player) === false && player !== stepPlayer && player.role.group === 1);
 
             //有可能没有外来者
             if (targetPlayerList.length > 0)
@@ -1825,19 +1746,22 @@ const createNightStepData = dayInfo =>
               targetPlayer = targetPlayerList[targetPlayerIndex];
             }
           }
-          //发动失败,等同与随机洗全体,有可能洗到伪装
+          //发动失败,等同与随机洗全体
           else
           {
-            let normalPlayer;
-            //不能随机到爪牙了
-            if (badCount === 0)
+            drunk = true;
+
+            const normalPlayer = allPlayerInfo.filter(player =>
             {
-              normalPlayer = allPlayerInfo.filter(player => rollPlayerList.includes(player) === false && (player.role.group === 1 || (player.role.group === 2 && player.role.devil === true && player.maskRole.group === 1)));
-            }
-            else
-            {
-              normalPlayer = allPlayerInfo.filter(player => rollPlayerList.includes(player) === false && (player.role.group === 1 || (player.role.group === 2 && player.maskRole.group === 1)));
-            }
+              if (rollPlayerList.includes(player) === true || player === stepPlayer)
+              {
+                return false;
+              }
+              else if (player.role.group === 1)
+              {
+                return true;
+              }
+            });
 
             //没有外来者,则设定为有外来者,随机洗全体
             if (normalPlayer.length === 0)
@@ -1882,14 +1806,12 @@ const createNightStepData = dayInfo =>
                 targetPlayer = targetPlayerList[targetPlayerIndex];
               }
             }
-
-            drunk = true;
           }
         }
         //非酒鬼
         else
         {
-          const targetPlayerList = allPlayerInfo.filter(player => player.role.group === 1);
+          const targetPlayerList = allPlayerInfo.filter(player => rollPlayerList.includes(player) === false && player.role.group === 1);
 
           //有可能没有外来者
           if (targetPlayerList.length > 0)
@@ -1977,27 +1899,8 @@ const createNightStepData = dayInfo =>
               otherRoleId = otherPlayer.maskRole.id;
             }
 
-            //中毒洗的身份,不包含洗衣妇,也不包含洗的两个对象中的任意身份
-            const fakeRoleList = roleList.filter(role =>
-            {
-              //必须为外来者
-              if (role.group === 1)
-              {
-                //不能是目标的身份和另外一个的身份
-                if (role.id !== targetRoleId && role.id !== otherRoleId)
-                {
-                  return true;
-                }
-                else
-                {
-                  return false;
-                }
-              }
-              else
-              {
-                return false;
-              }
-            });
+            //中毒洗的身份,必须为外来者,且不包含洗的两个对象中的任意身份
+            const fakeRoleList = roleList.filter(role => role.group === 1 && role.id !== targetRoleId && role.id !== otherRoleId);
             const fakeRoleIndex = random(fakeRoleList.length);
             const fakeRole = fakeRoleList[fakeRoleIndex];
 
@@ -2010,59 +1913,36 @@ const createNightStepData = dayInfo =>
           //酒鬼
           if (drunk === true)
           {
-            //洗到邪恶阵营则是酒鬼判定失败洗到伪装,前提是邪恶阵营穿的是外来者伪装
-            if (targetPlayer.role.group === 2 && targetPlayer.maskRole.group === 1)
+            let targetRoleId;
+            //目标是外来者,则避开该角色
+            if (targetPlayer.role.group === 1)
             {
-              targetRoleName = targetPlayer.maskRole.name;
+              targetRoleId = targetPlayer.role.id;
             }
-            //酒鬼,或洗不到伪装,则目标身份随机获取
-            else
+            //目标是邪恶阵营,且穿的外来者伪装,则避开伪装
+            else if (targetPlayer.role.group === 2 && targetPlayer.maskRole.group === 1)
             {
-              let targetRoleId;
-              //目标是外来者,则避开该角色
-              if (targetPlayer.role.group === 1)
-              {
-                targetRoleId = targetPlayer.role.id;
-              }
-
-              let otherRoleId;
-              //目标是外来者,则避开该角色
-              if (otherPlayer.role.group === 1)
-              {
-                otherRoleId = otherPlayer.role.id;
-              }
-              //目标是邪恶阵营,且穿的外来者伪装,则避开伪装
-              else if (otherPlayer.role.group === 2 && otherPlayer.maskRole.group === 1)
-              {
-                otherRoleId = otherPlayer.maskRole.id;
-              }
-
-              //中毒洗的身份,不包含洗衣妇,也不包含洗的两个对象中的任意身份
-              const fakeRoleList = roleList.filter(role =>
-              {
-                //必须为外来者
-                if (role.group === 1)
-                {
-                  //不能是目标的身份和另外一个的身份
-                  if (role.id !== targetRoleId && role.id !== otherRoleId)
-                  {
-                    return true;
-                  }
-                  else
-                  {
-                    return false;
-                  }
-                }
-                else
-                {
-                  return false;
-                }
-              });
-              const fakeRoleIndex = random(fakeRoleList.length);
-              const fakeRole = fakeRoleList[fakeRoleIndex];
-
-              targetRoleName = fakeRole.name;
+              targetRoleId = targetPlayer.maskRole.id;
             }
+
+            let otherRoleId;
+            //目标是外来者,则避开该角色
+            if (otherPlayer.role.group === 1)
+            {
+              otherRoleId = otherPlayer.role.id;
+            }
+            //目标是邪恶阵营,且穿的外来者伪装,则避开伪装
+            else if (otherPlayer.role.group === 2 && otherPlayer.maskRole.group === 1)
+            {
+              otherRoleId = otherPlayer.maskRole.id;
+            }
+
+            //中毒洗的身份,必须为外来者,且不包含洗的两个对象中的任意身份
+            const fakeRoleList = roleList.filter(role => role.group === 1 && role.id !== targetRoleId && role.id !== otherRoleId);
+            const fakeRoleIndex = random(fakeRoleList.length);
+            const fakeRole = fakeRoleList[fakeRoleIndex];
+
+            targetRoleName = fakeRole.name;
           }
           //非酒鬼
           else
@@ -2100,406 +1980,7 @@ const createNightStepData = dayInfo =>
   //调查员
   function doInvestigate()
   {
-    const stepPlayer = alivePlayerByRole(allPlayerInfo, "0", true)[0];
 
-    //有洗衣妇
-    if (stepPlayer)
-    {
-      const stepPlayerText = getPlayerInfoText([stepPlayer], allPlayerInfo);
-
-      let targetPlayer;
-      let washMask = false; //是否洗伪装
-      let drunk = false; //目标是否是酒鬼失败的对象
-      //中毒,即便是酒鬼也一样的处理方式
-      if (stepPlayer.poison === true)
-      {
-        let targetPlayerList;
-
-        //不能随机到爪牙了
-        if (badCount === 0)
-        {
-          targetPlayerList = allPlayerInfo.filter(player => player.role.devil === true && player.maskRole.group === 0);
-        }
-        //可以随机到爪牙
-        else
-        {
-          targetPlayerList = allPlayerInfo.filter(player => player.role.group === 2 && player.maskRole.group === 0);
-        }
-
-        //邪恶阵营有人穿村民伪装,才进行洗伪装判定
-        if (targetPlayerList.length > 0)
-        {
-          const roll = random(100) + 1;
-          const bingo = roll > 100 - washChance.value;
-
-          appendInfo
-          ({
-            text: `说书人掷洗衣妇洗到伪装的骰子：${roll}，判定${bingo === true ? "成功" : "失败"}`
-          });
-
-          washMask = bingo;
-
-          //洗伪装信息
-          if (bingo === true)
-          {
-            const targetPlayerIndex = random(targetPlayerList.length);
-
-            targetPlayer = targetPlayerList[targetPlayerIndex];
-          }
-          //不洗伪装信息,则洗全体中的村民,这里面包含伪装的邪恶阵营
-          else
-          {
-            //不能随机到爪牙了
-            if (badCount === 0)
-            {
-              targetPlayerList = allPlayerInfo.filter(player =>
-              {
-                if (player !== stepPlayer)
-                {
-                  if (player.role.group === 0)
-                  {
-                    return true;
-                  }
-                  else if (player.role.group === 2 && player.role.devil === true && player.maskRole.group === 0)
-                  {
-                    return true;
-                  }
-                }
-              });
-            }
-            //可以随机到爪牙
-            else
-            {
-              targetPlayerList = allPlayerInfo.filter(player =>
-              {
-                if (player !== stepPlayer)
-                {
-                  if (player.role.group === 0)
-                  {
-                    return true;
-                  }
-                  else if (player.role.group === 2 && player.maskRole.group === 0)
-                  {
-                    return true;
-                  }
-                }
-              });
-            }
-
-            const targetPlayerIndex = random(targetPlayerList.length);
-
-            targetPlayer = targetPlayerList[targetPlayerIndex];
-          }
-        }
-        //邪恶阵营没有穿村民伪装,则洗全体中的村民
-        else
-        {
-          const targetPlayerList = allPlayerInfo.filter(player => player.role.group === 0 && player !== stepPlayer);
-          const targetPlayerIndex = random(targetPlayerList.length);
-
-          targetPlayer = targetPlayerList[targetPlayerIndex];
-        }
-      }
-      //没中毒
-      else
-      {
-        //酒鬼,则判定是否发动成功
-        if (stepPlayer.role.id === "14")
-        {
-          const result = drunkRoll("normal");
-
-          //发动成功
-          if (result === true)
-          {
-            const targetPlayerList = allPlayerInfo.filter(player => player.role.group === 0 && player !== stepPlayer);
-            const targetPlayerIndex = random(targetPlayerList.length);
-
-            targetPlayer = targetPlayerList[targetPlayerIndex];
-          }
-          //发动失败,则洗全体村民,但可能洗到伪装
-          else
-          {
-            let targetPlayerList;
-
-            //不能随机到爪牙了
-            if (badCount === 0)
-            {
-              targetPlayerList = allPlayerInfo.filter(player =>
-              {
-                if (player !== stepPlayer)
-                {
-                  if (player.role.group === 0)
-                  {
-                    return true;
-                  }
-                  else if (player.role.devil === true && player.maskRole.group === 0)
-                  {
-                    return true;
-                  }
-                }
-              });
-            }
-            //可以随机到爪牙
-            else
-            {
-              targetPlayerList = allPlayerInfo.filter(player => player !== stepPlayer && (player.role.group === 0 || (player.role.group === 2 && player.maskRole.group === 0)));
-            }
-
-            const targetPlayerIndex = random(targetPlayerList.length);
-
-            targetPlayer = targetPlayerList[targetPlayerIndex];
-
-            drunk = true;
-          }
-        }
-        //非酒鬼
-        else
-        {
-          const targetPlayerList = allPlayerInfo.filter(player => player.role.group === 0 && player !== stepPlayer);
-          const targetPlayerIndex = random(targetPlayerList.length);
-
-          targetPlayer = targetPlayerList[targetPlayerIndex];
-        }
-      }
-
-      //随机到爪牙,则允许随机到的爪牙个数-1
-      if (targetPlayer.role.group === 2 && targetPlayer.role.devil !== true)
-      {
-        badCount--;
-      }
-
-      //另外个玩家
-      let otherPlayerList;
-
-      //不能随机到爪牙了
-      if (badCount === 0)
-      {
-        otherPlayerList = allPlayerInfo.filter(player =>
-        {
-          if (player !== targetPlayer && player !== stepPlayer)
-          {
-            if (player.role.group === 2)
-            {
-              return player.role.devil === true;
-            }
-            else
-            {
-              //不能随机到外来者
-              if (normalCount === 0 && player.role.group === 1)
-              {
-                return false;
-              }
-              else
-              {
-                return true;
-              }
-            }
-          }
-        });
-      }
-      //可以随机到爪牙
-      else
-      {
-        otherPlayerList = allPlayerInfo.filter(player =>
-        {
-          if (player !== targetPlayer && player !== stepPlayer)
-          {
-            //不能随机到外来者
-            if (normalCount === 0 && player.role.group === 1)
-            {
-              return false;
-            }
-            else
-            {
-              return true;
-            }
-          }
-        });
-      }
-
-      const otherIndex = random(otherPlayerList.length);
-      const otherPlayer = otherPlayerList[otherIndex];
-
-      let targetRoleName;
-
-      //中毒
-      if (stepPlayer.poison === true)
-      {
-        //目标为邪恶阵营,且是洗伪装(有可能洗伪装判定失败,但随机到邪恶阵营),则洗伪装
-        if (targetPlayer.role.group === 2 && washMask === true)
-        {
-          targetRoleName = targetPlayer.maskRole.name;
-        }
-        //不洗伪装,则身份是错的
-        else
-        {
-          let targetRoleId;
-          //目标是村民,则避开该角色
-          if (targetPlayer.role.group === 0)
-          {
-            targetRoleId = targetPlayer.role.id;
-          }
-          //目标是邪恶阵营,且穿的村民伪装,则避开伪装
-          else if (targetPlayer.role.group === 2 && targetPlayer.maskRole.group === 0)
-          {
-            targetRoleId = targetPlayer.maskRole.id;
-          }
-
-          let otherRoleId;
-          //目标是村民,则避开该角色
-          if (otherPlayer.role.group === 0)
-          {
-            otherRoleId = otherPlayer.role.id;
-          }
-          //目标是酒鬼,则避开酒鬼角色
-          else if (otherPlayer.role.id === "14")
-          {
-            otherRoleId = otherPlayer.drunkRole.id;
-          }
-          //目标是邪恶阵营,且穿的村民伪装,则避开伪装
-          else if (otherPlayer.role.group === 2 && otherPlayer.maskRole.group === 0)
-          {
-            otherRoleId = otherPlayer.maskRole.id;
-          }
-
-          //中毒洗的身份,不包含洗衣妇,也不包含洗的两个对象中的任意身份
-          const fakeRoleList = roleList.filter(role =>
-          {
-            //必须为村民
-            if (role.group === 0)
-            {
-              //不能是洗衣妇
-              if (role.id !== stepPlayer.role.id)
-              {
-                //不能是目标的身份和另外一个的身份
-                if (role.id !== targetRoleId && role.id !== otherRoleId)
-                {
-                  return true;
-                }
-                else
-                {
-                  return false;
-                }
-              }
-              else
-              {
-                return false;
-              }
-            }
-            else
-            {
-              return false;
-            }
-          });
-          const fakeRoleIndex = random(fakeRoleList.length);
-          const fakeRole = fakeRoleList[fakeRoleIndex];
-
-          targetRoleName = fakeRole.name;
-        }
-      }
-      //未中毒
-      else
-      {
-        //酒鬼
-        if (drunk === true)
-        {
-          //洗到邪恶阵营则是酒鬼判定失败洗到伪装
-          if (targetPlayer.role.group === 2)
-          {
-            targetRoleName = targetPlayer.maskRole.name;
-          }
-          //酒鬼,则目标身份随机获取
-          else
-          {
-            let targetRoleId;
-            //目标是村民,则避开该角色
-            if (targetPlayer.role.group === 0)
-            {
-              targetRoleId = targetPlayer.role.id;
-            }
-
-            let otherRoleId;
-            //目标是村民,则避开该角色
-            if (otherPlayer.role.group === 0)
-            {
-              otherRoleId = otherPlayer.role.id;
-            }
-            //目标是酒鬼,则避开酒鬼角色
-            else if (otherPlayer.role.id === "14")
-            {
-              otherRoleId = otherPlayer.drunkRole.id;
-            }
-            //目标是邪恶阵营,且穿的村民伪装,则避开伪装
-            else if (otherPlayer.role.group === 2 && otherPlayer.maskRole.group === 0)
-            {
-              otherRoleId = otherPlayer.maskRole.id;
-            }
-
-            //中毒洗的身份,不包含洗衣妇,也不包含洗的两个对象中的任意身份
-            const fakeRoleList = roleList.filter(role =>
-            {
-              //必须为村民
-              if (role.group === 0)
-              {
-                //不能是洗衣妇
-                if (role.id !== stepPlayer.role.id)
-                {
-                  //不能是目标的身份和另外一个的身份
-                  if (role.id !== targetRoleId && role.id !== otherRoleId)
-                  {
-                    return true;
-                  }
-                  else
-                  {
-                    return false;
-                  }
-                }
-                else
-                {
-                  return false;
-                }
-              }
-              else
-              {
-                return false;
-              }
-            });
-            const fakeRoleIndex = random(fakeRoleList.length);
-            const fakeRole = fakeRoleList[fakeRoleIndex];
-
-            targetRoleName = fakeRole.name;
-          }
-        }
-        //非酒鬼
-        else
-        {
-          targetRoleName = targetPlayer.role.name;
-        }
-      }
-
-      //号码按照从小到大顺序排列
-      const playerList = [targetPlayer, otherPlayer].sort((playerA, playerB) =>
-      {
-        const indexA = allPlayerInfo.indexOf(playerA);
-        const indexB = allPlayerInfo.indexOf(playerB);
-
-        return indexA - indexB;
-      });
-
-      const playerNameText = getPlayerInfoText(playerList, allPlayerInfo);
-
-      stepData.push
-      ({
-        type: "洗",
-        copyTitle: `请复制给：${stepPlayerText}`,
-        copyText: `今晚你得知的信息为：${playerNameText} 中有 ${targetRoleName}`,
-        title: "洗",
-        player: stepPlayerText,
-        text: "请发送给洗衣妇获取的信息"
-      });
-
-      rollPlayerList.push(...playerList);
-    }
   }
 };
 
