@@ -131,9 +131,15 @@
         <el-input v-model="newPlayer.name" size="small" placeholder="输入新玩家名字"/>
         <el-button size="small" type="primary" @click="addPlayer">添加新玩家</el-button>
       </div>
-      <p>洗衣妇技能获得的干扰玩家，可能为任何身份(除了自己)</p>
-      <p>图书管理员同上，且在中毒(且判定不洗伪装)或者酒鬼发动技能失败时，获得的2个玩家均可能为任何身份(除了自己)，只有1个外来者且是酒鬼调查员的情况下，酒鬼技能一定发动失败</p>
-      <p>调查员在中毒或者酒鬼发动技能失败时，获取到的2个玩家，一定都不为邪恶阵营。技能发动成功时，另个玩家不为邪恶阵营</p>
+      <!--说明-->
+      <template v-if="isPlaying === false">
+        <p class="info-text">洗衣妇技能获得的两个玩家中的干扰玩家，可能为任何身份(除了自己)</p>
+        <p class="info-text">图书管理员同上，且在中毒(且判定不洗伪装)或者酒鬼发动技能失败时，获得的2个玩家均可能为任何身份(除了自己)，只有1个外来者且是酒鬼调查员的情况下，酒鬼技能一定发动失败</p>
+        <p class="info-text">调查员在中毒或者酒鬼发动技能失败时，获取到的2个玩家，一定都不为邪恶阵营。技能发动成功时，干扰玩家不为邪恶阵营</p>
+        <p class="info-text">管家若继承主人身份时，若为F4(洗衣妇/图书管理员/调查员/厨师)身份，则以首夜的情况重新获取信息</p>
+        <p class="info-text">管家中毒不会影响继承，但视作继承后的身份中毒。未继承时中毒，白天可以视作没有主人。管家白天每次没有跟随主人投票或进行投票提名，则当晚邪恶阵营毒+1，且无上限</p>
+        <p class="info-text">没有爪牙时，不会有调查员和厨师。原本就没有外来者时，不会有图书管理员。外来者>=3或村民<3，则不会有男爵</p>
+      </template>
       <!--洗衣妇/图书管理员配置-->
       <div class="assign-operation-container">
         <template v-if="isPlaying === false">
@@ -141,6 +147,22 @@
           <el-input-number v-model="washChance" class="number-input" size="small" :step="1" :precision="0" :step-strictly="true" :min="0" :max="100"/>
         </template>
         <span v-else>洗衣妇/图书管理员中毒后判定洗出伪装信息的概率：{{washChance}}%</span>
+      </div>
+      <!--管家配置-->
+      <div class="assign-operation-container">
+        <template v-if="isPlaying === false">
+          <span>管家能否继承主人身份(当主人死亡后)：</span><el-switch v-model="masterConfig.enabled" size="small"/>
+          <template v-if="masterConfig.enabled === true">
+            <span>管家继承酒鬼后，酒鬼身份是否重新分配：</span><el-switch v-model="masterConfig.rollRole" size="small"/>
+          </template>
+          <template v-else>
+            <span> 管家是否每天认主：</span><el-switch v-model="masterConfig.everyday" size="small"/>
+          </template>
+        </template>
+        <span v-else>
+          {{masterConfig.enabled === true ? "管家继承主人身份" : "管家不继承主人身份"}}
+          {{masterConfig.everyday === true ? "，每天认一次主人" : "，仅首夜认主人"}}
+        </span>
       </div>
       <!--酒鬼配置-->
       <div class="assign-operation-container">
@@ -202,6 +224,15 @@
               <template #dropdown>
                 <el-dropdown-menu>
                   <el-dropdown-item v-for="role in maskRoleList" :key="role" :command="role">{{role.name}}</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+            <!--管家认主-->
+            <el-dropdown v-if="player.status === 0 && player.role.id === `13`" trigger="click" @command="master => player.master = master">
+              <el-button type="primary" size="small">认主</el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item v-for="player in masterPlayerList" :key="player" :command="player">{{getPlayerInfoText([player], allPlayerInfo)}}</el-dropdown-item>
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
@@ -313,6 +344,7 @@ const dayType = ref("night");
 const extraMaskCount = ref(1); //邪恶阵营首夜分发的额外伪装个数
 const housekeeperPoisonCount = ref(0); //管家毒
 const washChance = ref(75); //洗衣中毒后得知伪装信息的概率
+const masterConfig = reactive({enabled: true, everyday: false});
 const drunkConfig = reactive({normal: 25, special: 0, superRole: ["9", "10", "12"]}); //酒鬼正确概率,超级技能有圣女枪手市长
 const reboundConfig = reactive({self: 50, soldier: 200}); //弹刀配置
 const reboundResult = reactive({}); //弹刀结果
@@ -424,8 +456,28 @@ const getRoleName = player =>
   {
     let roleName = player.role.name;
 
+    //管家主人
+    if (player.master)
+    {
+      //管家继承,则显示继承身份
+      if (player.inherit === true)
+      {
+        roleName += `(${player.master.role.name})`;
+
+        //主人的酒鬼身份
+        if (player.master.role.id === "14")
+        {
+          roleName += `(${player.drunkRole.name})`;
+        }
+      }
+      //还未继承,则显示主人号码名字
+      else
+      {
+        roleName += `(${getPlayerInfoText([player.master], allPlayerInfo)})`;
+      }
+    }
     //酒鬼身份
-    if (player.drunkRole)
+    else if (player.drunkRole)
     {
       roleName += `(${player.drunkRole.name})`;
     }
@@ -498,8 +550,6 @@ const badRoleAssignStatus = computed(() =>
 
           if (Math.abs(gongqingIndex - nextIndex) === 1)
           {
-            console.info("共情", gongqingIndex, index, nextIndex, indexList);
-
             status += 1;
             break;
           }
@@ -617,6 +667,29 @@ const maskRoleList = computed(() =>
   });
 });
 
+//管家认主的玩家列表
+const masterPlayerList = computed(() =>
+{
+  return allPlayerInfo.filter(player =>
+  {
+    //不能是管家
+    if (player.role.id === "13")
+    {
+      return false;
+    }
+    //存活
+    else if (player.status === 0)
+    {
+      return true;
+    }
+    //若死亡,只能是当晚死亡
+    else if (player.deadDayIndex === dayIndex.value && player.deadDayType === dayType.value)
+    {
+      return true;
+    }
+  });
+});
+
 const addPlayer = name =>
 {
   if (typeof name === "string")
@@ -683,6 +756,11 @@ const assignRole = () =>
        {
          //不能有调查员
          if (role.id === "2")
+         {
+           return false;
+         }
+         //不能有厨师
+         else if (role.id === "3")
          {
            return false;
          }
@@ -1047,6 +1125,49 @@ const nextStepInNight = dayInfo =>
       }
     }
   }
+  //跳转到第三步,进行第二步的验证
+  else if (dayInfo.stepIndex === 1)
+  {
+    //首夜,进行管家认主
+    if (dayInfo.dayIndex === 0)
+    {
+      const keeperPlayer = allPlayerInfo.find(player => player.role.id === "13");
+
+      if (keeperPlayer && keeperPlayer.master == null)
+      {
+        ElMessage.error("请让管家选择主人，才能进行下一步！");
+
+        return;
+      }
+    }
+    else
+    {
+      //不继承,每天认主
+      if (masterConfig.enabled === false && masterConfig.everyday === true)
+      {
+        const keeperPlayer = allPlayerInfo.find(player => player.role.id === "13" && player.status === 0);
+
+        if (keeperPlayer)
+        {
+          const master = keeperPlayer.master;
+
+          if (master == null)
+          {
+            ElMessage.error("请让管家选择主人，才能进行下一步！");
+
+            return;
+          }
+          //死了,但不是当夜死的,就需要重新选择主人
+          else if (master.status !== 0 && master.deadDayType === "night" && master.deadDayIndex === dayIndex.value)
+          {
+            ElMessage.error("请让管家选择主人，才能进行下一步！");
+
+            return;
+          }
+        }
+      }
+    }
+  }
 
   dayInfo.stepIndex++;
 
@@ -1116,10 +1237,22 @@ const createNightStepData = dayInfo =>
     if (dayIndex === 0)
     {
       doF4(); //处理F4信息
+
+      //管家认主
+      doMaster();
     }
     else
     {
-
+      //继承
+      if (masterConfig.enabled === true)
+      {
+        doInherit();
+      }
+      //管家每天认主
+      else if (masterConfig.everyday === true)
+      {
+        doMaster();
+      }
     }
 
     stepDataList.push(stepData);
@@ -1164,7 +1297,7 @@ const createNightStepData = dayInfo =>
       poisonCount = housekeeperPoisonCount.value; //继承管家毒
 
       //是否有下毒者
-      const hasPoisonPlayer = hasAlivePlayerByRole(allPlayerInfo, "13");
+      const hasPoisonPlayer = hasAlivePlayerByRole(allPlayerInfo, "17");
 
       //有下毒者,毒+1
       if (hasPoisonPlayer === true)
@@ -1776,6 +1909,70 @@ const createNightStepData = dayInfo =>
       }
     }
   }
+
+  //管家认主
+  function doMaster()
+  {
+    const stepPlayer = alivePlayerByRole(allPlayerInfo, "13", true)[0];
+
+    if (stepPlayer)
+    {
+      const stepPlayerText = getPlayerInfoText([stepPlayer], allPlayerInfo);
+
+      //存活玩家,或者非今晚死的
+      const targetPlayer = alivePlayer.filter(player => player !== stepPlayer);
+      const targetPlayerText = getPlayerInfoText(targetPlayer, allPlayerInfo);
+
+      stepData.push
+      ({
+        type: "管",
+        copyTitle: `请复制给：${stepPlayerText}`,
+        copyText: `请选择你的主人：${targetPlayerText}`,
+        title: "管",
+        player: stepPlayerText,
+        text: "请管家选择主人"
+      });
+    }
+  }
+
+  //管家继承
+  function doInherit()
+  {
+    const stepPlayer = alivePlayerByRole(allPlayerInfo, "13", true)[0];
+
+    //有管家且开启了继承
+    if (stepPlayer && masterConfig.enabled === true)
+    {
+      const {master, inherit} = stepPlayer;
+
+      debugger;
+
+      //还未继承且主人死了,则执行继承
+      if (inherit !== true && master.status !== 0)
+      {
+        stepPlayer.inherit = true;
+
+        //酒鬼,则继承酒鬼身份
+        if (master.role.id === "14")
+        {
+          stepPlayer.drunkRole = master.drunkRole;
+        }
+
+        const stepPlayerText = getPlayerInfoText([stepPlayer], allPlayerInfo);
+        const masterRoleName = master.role.id === "14" ? stepPlayer.drunkRole.name : master.role.name;
+
+        stepData.push
+        ({
+          type: "继",
+          copyTitle: `请复制给：${stepPlayerText}`,
+          copyText: `你的主人已经死亡，你继承了主人的身份：${masterRoleName}`,
+          title: "继",
+          player: stepPlayerText,
+          text: "请发送给管家继承信息"
+        });
+      }
+    }
+  }
 };
 
 //反弹判定
@@ -2356,6 +2553,7 @@ const copyText = text =>
   justify-content: flex-start;
   align-items: stretch;
   gap: 10px;
+  flex: 1;
 
   .player-select
   {
@@ -2364,12 +2562,18 @@ const copyText = text =>
     align-items: center;
     flex-wrap: wrap;
     gap: 4px;
-    width: 500px;
+    width: 600px;
 
     .player-add-button
     {
       margin: 0;
     }
+  }
+
+  .info-text
+  {
+    font-size: 12px;
+    color: yellow;
   }
 
   .role-container
@@ -2724,6 +2928,11 @@ const copyText = text =>
       .name-input
       {
         margin-right: 20px;
+      }
+
+      .el-button
+      {
+        margin: 0;
       }
     }
   }

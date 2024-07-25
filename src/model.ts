@@ -254,11 +254,19 @@ export function alivePlayerByRole(allPlayer: any[], roleId: string, includeDrunk
       {
         return true;
       }
+      //管家继承
       else if (player.role.id === "13" && player.inherit === true)
       {
-        const master = allPlayer[player.master];
+        const {master} = player;
 
-        return master.role.id === roleId;
+        if (master.role.id === roleId)
+        {
+          return true;
+        }
+        else if (includeDrunk === true && master.role.id === "14")
+        {
+          return player.drunkRole.id === roleId;
+        }
       }
       //判断酒鬼
       else if (includeDrunk === true && player.role.id === "14")
