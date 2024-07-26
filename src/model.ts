@@ -230,12 +230,19 @@ export function hasAlivePlayerByRole(allPlayer, roleId: string, includeDrunk?: b
       }
       else if (player.role.id === "13" && player.inherit === true)
       {
-        const master = allPlayer[player.master];
+        const {master} = player;
 
-        return master.role.id === roleId;
+        if (master.role.id === roleId)
+        {
+          return true;
+        }
+        else if (includeDrunk === true && master.role.drunk === true)
+        {
+          return player.drunkRole.id === roleId;
+        }
       }
       //判断酒鬼
-      else if (includeDrunk === true && player.role.id === "14")
+      else if (includeDrunk === true && player.role.drunk === true)
       {
         return player.drunkRole.id === roleId;
       }
@@ -263,13 +270,13 @@ export function alivePlayerByRole(allPlayer: any[], roleId: string, includeDrunk
         {
           return true;
         }
-        else if (includeDrunk === true && master.role.id === "14")
+        else if (includeDrunk === true && master.role.drunk === true)
         {
           return player.drunkRole.id === roleId;
         }
       }
       //判断酒鬼
-      else if (includeDrunk === true && player.role.id === "14")
+      else if (includeDrunk === true && player.role.drunk === true)
       {
         return player.drunkRole.id === roleId;
       }
@@ -298,4 +305,10 @@ export function getPlayerInfoText(playerList, allPlayer, includeRole?: boolean):
       return `${number}-${name}`;
     }
   }).join(" | ");
+}
+
+//排序玩家,按照号码从小到大排列
+export function sortPlayer(playerList, allPlayer)
+{
+  return playerList.sort((playerA, playerB) => allPlayer.indexOf(playerA) - allPlayer.indexOf(playerB));
 }

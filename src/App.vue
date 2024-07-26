@@ -33,8 +33,8 @@
               <!--酒鬼骰子-->
               <template v-else-if="info.type === `drunk`">
                 <template v-if="info.player">
-                  <span v-if="info.skillType === `normal`" class="info-text">说书人进行 酒鬼({{player.drunk.role.name}}) 普通技能掷骰子(1-100)：</span>
-                  <span v-else class="info-text">说书人进行 酒鬼({{player.drunk.role.name}}) 超级技能掷骰子(1-100)：</span>
+                  <span v-if="info.skillType === `normal`" class="info-text">说书人进行 酒鬼({{player.drunkRole.name}}) 普通技能掷骰子(1-100)：</span>
+                  <span v-else class="info-text">说书人进行 酒鬼({{player.drunkRole.name}}) 超级技能掷骰子(1-100)：</span>
                 </template>
                 <template v-else>
                   <span v-if="info.skillType === `normal`" class="info-text">说书人进行酒鬼普通技能掷骰子(1-100)：</span>
@@ -134,7 +134,7 @@
       <!--说明-->
       <template v-if="isPlaying === false">
         <p class="info-text">洗衣妇技能获得的两个玩家中的干扰玩家，可能为任何身份(除了自己)</p>
-        <p class="info-text">图书管理员同上，且在中毒(且判定不洗伪装)或者酒鬼发动技能失败时，获得的2个玩家均可能为任何身份(除了自己)，只有1个外来者且是酒鬼调查员的情况下，酒鬼技能一定发动失败</p>
+        <p class="info-text">图书管理员同上，且在中毒时,一定洗到狼人,且一定洗为狼人的外来者身份或者酒鬼(洗的狼人没有穿外来者伪装)，只有1个外来者且是酒鬼调查员的情况下，酒鬼技能一定发动失败</p>
         <p class="info-text">调查员在中毒或者酒鬼发动技能失败时，获取到的2个玩家，一定都不为邪恶阵营。技能发动成功时，干扰玩家不为邪恶阵营</p>
         <p class="info-text">管家若继承主人身份时，若为F4(洗衣妇/图书管理员/调查员/厨师)身份，则以首夜的情况重新获取信息</p>
         <p class="info-text">管家中毒不会影响继承，但视作继承后的身份中毒。未继承时中毒，白天可以视作没有主人。管家白天每次没有跟随主人投票或进行投票提名，则当晚邪恶阵营毒+1，且无上限</p>
@@ -152,10 +152,7 @@
       <div class="assign-operation-container">
         <template v-if="isPlaying === false">
           <span>管家能否继承主人身份(当主人死亡后)：</span><el-switch v-model="masterConfig.enabled" size="small"/>
-          <template v-if="masterConfig.enabled === true">
-            <span>管家继承酒鬼后，酒鬼身份是否重新分配：</span><el-switch v-model="masterConfig.rollRole" size="small"/>
-          </template>
-          <template v-else>
+          <template v-if="masterConfig.enabled === false">
             <span> 管家是否每天认主：</span><el-switch v-model="masterConfig.everyday" size="small"/>
           </template>
         </template>
@@ -332,7 +329,7 @@ import {
   roleList,
   hasAlivePlayerByRole,
   alivePlayerByRole,
-  getPlayerInfoText
+  getPlayerInfoText, sortPlayer
 } from "./model.ts";
 import {ElMessage} from "element-plus";
 
@@ -344,7 +341,7 @@ const dayType = ref("night");
 const extraMaskCount = ref(1); //邪恶阵营首夜分发的额外伪装个数
 const housekeeperPoisonCount = ref(0); //管家毒
 const washChance = ref(75); //洗衣中毒后得知伪装信息的概率
-const masterConfig = reactive({enabled: true, everyday: false});
+const masterConfig = reactive({enabled: false, everyday: false});
 const drunkConfig = reactive({normal: 25, special: 0, superRole: ["9", "10", "12"]}); //酒鬼正确概率,超级技能有圣女枪手市长
 const reboundConfig = reactive({self: 50, soldier: 200}); //弹刀配置
 const reboundResult = reactive({}); //弹刀结果
@@ -465,7 +462,7 @@ const getRoleName = player =>
         roleName += `(${player.master.role.name})`;
 
         //主人的酒鬼身份
-        if (player.master.role.id === "14")
+        if (player.master.role.drunk === true)
         {
           roleName += `(${player.drunkRole.name})`;
         }
@@ -633,7 +630,7 @@ const maskRoleList = computed(() =>
   //所有非邪恶阵营未上场的角色,同时排除酒鬼
   const allOtherRole = roleList.filter(role =>
   {
-    if (role.group !== 2 && role.id !== "14")
+    if (role.group !== 2 && role.drunk !== true)
     {
       return allPlayerInfo.some(player => player.role.id === role.id) === false;
     }
@@ -728,6 +725,7 @@ const resetAssignRole = () =>
 
   allPlayerInfo.forEach(player =>
   {
+    // delete player.skillDone;
     delete player.master;
     delete player.inherit;
     delete player.guard;
@@ -737,6 +735,7 @@ const resetAssignRole = () =>
     delete player.role;
     delete player.maskRole;
     delete player.drunkRole;
+    delete player.inheritDevil;
     delete player.status;
   });
 };
@@ -868,10 +867,26 @@ const assignRole = () =>
 
 const startPlay = () =>
 {
-  //开始游戏时,所有玩家状态设置为存货
+  //开始游戏时,重置玩家状态
   allPlayerInfo.forEach(player =>
   {
     player.status = 0;
+
+    // delete player.skillDone;
+    delete player.master;
+    delete player.inherit;
+    delete player.guard;
+    delete player.poison;
+    delete player.deadDayIndex;
+    delete player.deadDayType;
+    delete player.maskRole;
+    delete player.inheritDevil;
+
+    //如果不是酒鬼,则删除酒鬼身份(删除掉上一把的管家继承的酒鬼身份)
+    if (player.role.id.drunk !== true)
+    {
+      delete player.drunkRole;
+    }
   });
 
   //清空弹刀结果
@@ -1003,6 +1018,12 @@ const nextStep = (firstDay) =>
   //进入夜晚后,开始行动
   if (currentDay.dayType === "night")
   {
+    //进入夜晚所有玩家解毒
+    allPlayerInfo.forEach(player =>
+    {
+      delete player.poison;
+    });
+
     nextStepInNight(currentDay);
   }
   //切换到白天,清空反弹结果,管家毒清零
@@ -1171,23 +1192,6 @@ const nextStepInNight = dayInfo =>
 
   dayInfo.stepIndex++;
 
-  const {stepIndex} = dayInfo;
-
-  //毒守刀
-  if (stepIndex === 0)
-  {
-    //第一步首先所有玩家解毒
-    allPlayerInfo.forEach(player =>
-    {
-      delete player.poison;
-    });
-  }
-  //继承和其他验证
-  else if (dayInfo.stepIndex === 1)
-  {
-
-  }
-
   //构建步骤
   createNightStepData(dayInfo);
 };
@@ -1208,6 +1212,12 @@ const createNightStepData = dayInfo =>
     if (dayIndex === 0)
     {
       doKnow(); //相认
+    }
+
+    //非首夜,首先执行继承,因为有可能白天死了管家的主人,继承第一优先级
+    if (dayIndex > 0)
+    {
+      doInherit();
     }
 
     doPoison(); //毒
@@ -1243,15 +1253,33 @@ const createNightStepData = dayInfo =>
     }
     else
     {
+      let inherit;
+
       //继承
       if (masterConfig.enabled === true)
       {
-        doInherit();
+        inherit = doInherit();
       }
       //管家每天认主
       else if (masterConfig.everyday === true)
       {
         doMaster();
+      }
+
+      //管家今夜继承了
+      if (inherit === true)
+      {
+
+      }
+      else if (masterConfig.enabled === true)
+      {
+        const keeperPlayer = alivePlayerByRole(allPlayerInfo, "13")[0];
+
+        //有管家且是今天白天继承的,且继承的是F4(包括酒鬼),则这个时候才能发动技能
+        if (keeperPlayer && keeperPlayer.inherit === true && keeperPlayer.master.deadDayType === "day" && keeperPlayer.master.deadDayIndex === dayIndex && (["0", "1", "2", "3"].includes(keeperPlayer.master.role.id) === true || ["0", "1", "2", "3"].includes(keeperPlayer.drunkRole.id) === true))
+        {
+          doKeeperF4(keeperPlayer);
+        }
       }
     }
 
@@ -1420,7 +1448,7 @@ const createNightStepData = dayInfo =>
         }
       }
       //酒鬼
-      else if (washPlayer.role.id === "14")
+      else if (washPlayer.role.drunk === true)
       {
         const result = drunkRoll("normal", washPlayer);
 
@@ -1436,23 +1464,8 @@ const createNightStepData = dayInfo =>
     {
       map.library = {};
 
-      //中毒
-      if (libraryPlayer.poison === true)
-      {
-        const roll = random(100) + 1;
-        const bingo = roll > 100 - washChance.value;
-
-        map.library.poison = true;
-        map.library.roll = roll;
-
-        //洗伪装
-        if (bingo === true)
-        {
-          map.library.washMask = true;
-        }
-      }
       //酒鬼
-      else if (libraryPlayer.role.id === "14")
+      if (libraryPlayer.poison !== true && libraryPlayer.role.drunk === true)
       {
         //若外来者只有自己这个酒鬼,则酒鬼技能一定失败
         if (assignRoleData.normalRole.length === 1)
@@ -1483,7 +1496,7 @@ const createNightStepData = dayInfo =>
         map.investigate.poison = true;
       }
       //酒鬼
-      else if (investigatePlayer.role.id === "14")
+      else if (investigatePlayer.role.drunk === true)
       {
         const result = drunkRoll("normal", investigatePlayer);
 
@@ -1537,28 +1550,16 @@ const createNightStepData = dayInfo =>
       badCount--;
     }
 
-    //若判定洗衣妇洗伪装,但没有可洗的,则判定为不洗伪装
-    if (washPlayer && map.wash.washMask === true)
+    //洗衣妇判定是否有可以洗的伪装对象
+    if (washPlayer)
     {
-      const canWash = allPlayerInfo.some(player => rollPlayerList.includes(player) === false && player.role.group === 2 && player.maskRole.group === 0);
-
-      if (canWash === false)
-      {
-        delete map.wash.washMask;
-        delete map.wash.roll;
-      }
+      map.wash.canWash = allPlayerInfo.some(player => rollPlayerList.includes(player) === false && player.role.group === 2 && player.maskRole.group === 0);
     }
 
-    //若判定图书管理员洗伪装,但没有可洗的,则判定为不洗伪装
-    if (libraryPlayer && map.library.washMask === true)
+    //图书管理员判定是否有可以洗的伪装对象
+    if (libraryPlayer)
     {
-      const canWash = allPlayerInfo.some(player => rollPlayerList.includes(player) === false && player.role.group === 2 && player.maskRole.group === 1);
-
-      if (canWash === false)
-      {
-        delete map.library.washMask;
-        delete map.library.roll;
-      }
+      map.library.canWash = allPlayerInfo.some(player => rollPlayerList.includes(player) === false && player.role.group === 2 && player.maskRole.group === 1);
     }
 
     //洗衣妇发动错误技能,中毒/酒鬼
@@ -1567,17 +1568,21 @@ const createNightStepData = dayInfo =>
       //中毒
       if (map.wash.poison === true)
       {
-        const {roll, washMask} = map.wash;
+        const {canWash, roll, washMask} = map.wash;
 
-        appendInfo
-        ({
-          text: `说书人掷洗衣妇洗到伪装的骰子：${roll}，判定${washMask === true ? "成功" : "失败"}`
-        });
+        //可洗的情况下,才roll
+        if (canWash === true)
+        {
+          appendInfo
+          ({
+            text: `说书人掷洗衣妇洗到伪装的骰子：${roll}，判定${washMask === true ? "成功" : "失败"}`
+          });
+        }
 
         const targetPlayerList = allPlayerInfo.filter(player =>
         {
           //洗伪装
-          if (washMask === true)
+          if (canWash === true && washMask === true)
           {
             return rollPlayerList.includes(player) === false && player.role.group === 2 && player.maskRole.group === 0;
           }
@@ -1593,7 +1598,7 @@ const createNightStepData = dayInfo =>
         map.wash.targetPlayer = targetPlayer;
 
         //洗伪装
-        if (washMask === true)
+        if (canWash === true && washMask === true)
         {
           map.wash.targetPlayerRoleName = targetPlayer.maskRole.name;
         }
@@ -1619,15 +1624,10 @@ const createNightStepData = dayInfo =>
       //中毒
       if (map.library.poison === true)
       {
-        const {roll, washMask} = map.library;
+        const {canWash} = map.library;
 
-        appendInfo
-        ({
-          text: `说书人掷图书管理员洗到伪装的骰子：${roll}，判定${washMask === true ? "成功" : "失败"}`
-        });
-
-        //洗伪装
-        if (washMask === true)
+        //能洗伪装,则一定洗伪装
+        if (canWash === true)
         {
           const targetPlayerList = allPlayerInfo.filter(player => rollPlayerList.includes(player) === false && player.role.group === 2 && player.maskRole.group === 1);
           const targetPlayerIndex = random(targetPlayerList.length);
@@ -1638,26 +1638,28 @@ const createNightStepData = dayInfo =>
 
           rollPlayerList.push(targetPlayer);
         }
-        //不洗伪装，则洗全体
+        //不能洗伪装,则洗狼人的村民身份为酒鬼
         else
         {
-          const targetPlayerList = allPlayerInfo.filter(player => rollPlayerList.includes(player) === false && player !== libraryPlayer);
+          const targetPlayerList = allPlayerInfo.filter(player => rollPlayerList.includes(player) === false && player.role.group === 2);
           const targetPlayerIndex = random(targetPlayerList.length);
           const targetPlayer = targetPlayerList[targetPlayerIndex];
 
           map.library.targetPlayer = targetPlayer;
+          map.library.targetPlayerRoleName = roleList.find(role => role.drunk === true).name;
 
           rollPlayerList.push(targetPlayer);
         }
       }
-      //酒鬼,则洗其他所有人
+      //酒鬼,随机洗村民和狼人中村民伪装的,洗为酒鬼
       else if (map.library.drunk === true)
       {
-        const targetPlayerList = allPlayerInfo.filter(player => rollPlayerList.includes(player) === false && player !== libraryPlayer);
+        const targetPlayerList = allPlayerInfo.filter(player => rollPlayerList.includes(player) === false && player !== libraryPlayer && (player.role.group === 0 || player.role.group === 2 && player.maskRole.group === 0));
         const targetPlayerIndex = random(targetPlayerList.length);
         const targetPlayer = targetPlayerList[targetPlayerIndex];
 
         map.library.targetPlayer = targetPlayer;
+        map.library.targetPlayerRoleName = roleList.find(role => role.drunk === true).name;
 
         rollPlayerList.push(targetPlayer);
       }
@@ -1695,8 +1697,9 @@ const createNightStepData = dayInfo =>
 
       map.investigate.otherPlayer = otherPlayer;
 
+      const skillPlayer = sortPlayer([map.investigate.targetPlayer, map.investigate.otherPlayer], allPlayerInfo);
       const playerText = getPlayerInfoText([investigatePlayer], allPlayerInfo);
-      const skillPlayerText = getPlayerInfoText([map.investigate.targetPlayer, map.investigate.otherPlayer], allPlayerInfo);
+      const skillPlayerText = getPlayerInfoText(skillPlayer, allPlayerInfo);
 
       stepData.push
       ({
@@ -1731,8 +1734,9 @@ const createNightStepData = dayInfo =>
         map.wash.targetPlayerRoleName = fakeRole.name;
       }
 
+      const skillPlayer = sortPlayer([map.wash.targetPlayer, map.wash.otherPlayer], allPlayerInfo);
       const playerText = getPlayerInfoText([washPlayer], allPlayerInfo);
-      const skillPlayerText = getPlayerInfoText([map.wash.targetPlayer, map.wash.otherPlayer], allPlayerInfo);
+      const skillPlayerText = getPlayerInfoText(skillPlayer, allPlayerInfo);
 
       stepData.push
       ({
@@ -1750,37 +1754,56 @@ const createNightStepData = dayInfo =>
     //图书管理员获取另外个号码
     if (libraryPlayer)
     {
-      const otherPlayerList = allPlayerInfo.filter(player => rollPlayerList.includes(player) === false && player !== libraryPlayer);
-      const otherPlayerIndex = random(otherPlayerList.length);
-      const otherPlayer = otherPlayerList[otherPlayerIndex];
-
-      map.library.otherPlayer = otherPlayer;
-
-      //还没有身份,则是中毒非伪装或者酒鬼,随机获取外来者身份
-      if (map.library.targetPlayerRoleName == null)
+      //没有外来者
+      if (map.library.targetPlayer == null)
       {
-        //外来者且不是且不是洗的2个人中的身份
-        const fakeRoleList = roleList.filter(role => role.group === 1 && role.id !== otherPlayer.role.id && role.id !== map.library.targetPlayer.role.id);
-        const fakeRoleIndex = random(fakeRoleList.length);
-        const fakeRole = fakeRoleList[fakeRoleIndex];
+        const playerText = getPlayerInfoText([libraryPlayer], allPlayerInfo);
 
-        map.library.targetPlayerRoleName = fakeRole.name;
+        stepData.push
+        ({
+          type: "图",
+          copyTitle: `请复制给：${playerText}`,
+          copyText: "今晚你得知的信息为：没有外来者",
+          title: "图",
+          player: playerText,
+          text: "请发送给图书管理员获取的信息"
+        });
       }
+      else
+      {
+        const otherPlayerList = allPlayerInfo.filter(player => rollPlayerList.includes(player) === false && player !== libraryPlayer);
+        const otherPlayerIndex = random(otherPlayerList.length);
+        const otherPlayer = otherPlayerList[otherPlayerIndex];
 
-      const playerText = getPlayerInfoText([libraryPlayer], allPlayerInfo);
-      const skillPlayerText = getPlayerInfoText([map.library.targetPlayer, map.library.otherPlayer], allPlayerInfo);
+        map.library.otherPlayer = otherPlayer;
 
-      stepData.push
-      ({
-        type: "图",
-        copyTitle: `请复制给：${playerText}`,
-        copyText: `今晚你得知的信息为：${skillPlayerText} 中有 ${map.library.targetPlayerRoleName}`,
-        title: "图",
-        player: playerText,
-        text: "请发送给图书管理员获取的信息"
-      });
+        //还没有身份,则是中毒非伪装或者酒鬼,随机获取外来者身份
+        if (map.library.targetPlayerRoleName == null)
+        {
+          //外来者且不是且不是洗的2个人中的身份
+          const fakeRoleList = roleList.filter(role => role.group === 1 && role.id !== otherPlayer.role.id && role.id !== map.library.targetPlayer.role.id);
+          const fakeRoleIndex = random(fakeRoleList.length);
+          const fakeRole = fakeRoleList[fakeRoleIndex];
 
-      rollPlayerList.push(otherPlayer);
+          map.library.targetPlayerRoleName = fakeRole.name;
+        }
+
+        const skillPlayer = sortPlayer([map.library.targetPlayer, map.library.otherPlayer], allPlayerInfo);
+        const playerText = getPlayerInfoText([libraryPlayer], allPlayerInfo);
+        const skillPlayerText = getPlayerInfoText(skillPlayer, allPlayerInfo);
+
+        stepData.push
+        ({
+          type: "图",
+          copyTitle: `请复制给：${playerText}`,
+          copyText: `今晚你得知的信息为：${skillPlayerText} 中有 ${map.library.targetPlayerRoleName}`,
+          title: "图",
+          player: playerText,
+          text: "请发送给图书管理员获取的信息"
+        });
+
+        rollPlayerList.push(otherPlayer);
+      }
     }
 
     const cookPlayer = alivePlayerByRole(allPlayerInfo, "3", true)[0];
@@ -1861,7 +1884,7 @@ const createNightStepData = dayInfo =>
         });
       }
       //酒鬼
-      else if (cookPlayer.role.id === "14")
+      else if (cookPlayer.role.drunk === true)
       {
         const result = drunkRoll("normal", cookPlayer);
 
@@ -1945,21 +1968,19 @@ const createNightStepData = dayInfo =>
     {
       const {master, inherit} = stepPlayer;
 
-      debugger;
-
       //还未继承且主人死了,则执行继承
       if (inherit !== true && master.status !== 0)
       {
         stepPlayer.inherit = true;
 
         //酒鬼,则继承酒鬼身份
-        if (master.role.id === "14")
+        if (master.role.drunk === true)
         {
           stepPlayer.drunkRole = master.drunkRole;
         }
 
         const stepPlayerText = getPlayerInfoText([stepPlayer], allPlayerInfo);
-        const masterRoleName = master.role.id === "14" ? stepPlayer.drunkRole.name : master.role.name;
+        const masterRoleName = master.role.drunk === true ? stepPlayer.drunkRole.name : master.role.name;
 
         stepData.push
         ({
@@ -1969,6 +1990,236 @@ const createNightStepData = dayInfo =>
           title: "继",
           player: stepPlayerText,
           text: "请发送给管家继承信息"
+        });
+
+        return true;
+      }
+    }
+  }
+
+  //管家的F4技能
+  function doKeeperF4(keeperPlayer)
+  {
+    const keeperPlayerText = getPlayerInfoText([keeperPlayer], allPlayerInfo);
+    const {master} = keeperPlayer;
+    const isDrunk = master.role.drunk === true; //是否是酒鬼
+    const roleId = isDrunk === true ? keeperPlayer.drunkRole.id : master.role.id;
+
+    //洗衣妇
+    if (roleId === "0")
+    {
+      let washMask;
+      let drunkSkill;
+
+      let targetPlayer;
+      let targetPlayerRoleName;
+
+      //中毒
+      if (keeperPlayer.poison === true)
+      {
+        const canWash = allPlayerInfo.some(player => player.role.group === 2 && player.maskRole.group === 0);
+
+        if (canWash === true)
+        {
+          const roll = random(100) + 1;
+
+          washMask = roll > 100 - washChance.value;
+
+          appendInfo
+          ({
+            text: `说书人掷洗衣妇洗到伪装的骰子：${roll}，判定${washMask === true ? "成功" : "失败"}`
+          });
+        }
+
+        const targetPlayerList = allPlayerInfo.filter(player =>
+        {
+          //洗伪装
+          if (washMask === true)
+          {
+            return player.role.group === 2 && player.maskRole.group === 0;
+          }
+          //不洗伪装
+          else
+          {
+            return player !== master && player !== keeperPlayer && player.role.group === 0;
+          }
+        });
+
+        const targetPlayerIndex = random(targetPlayerList.length);
+
+        targetPlayer = targetPlayerList[targetPlayerIndex];
+      }
+      //酒鬼
+      else if (isDrunk === true)
+      {
+        drunkSkill = drunkRoll("normal", keeperPlayer) === false;
+
+        const targetPlayerList = allPlayerInfo.filter(player => player !== master && player.role.group === 0);
+        const targetPlayerIndex = random(targetPlayerList.length);
+
+        targetPlayer = targetPlayerList[targetPlayerIndex];
+      }
+      //正常发动
+      else
+      {
+        const targetPlayerList = allPlayerInfo.filter(player => player !== master && player.role.group === 0);
+        const targetPlayerIndex = random(targetPlayerList.length);
+
+        targetPlayer = targetPlayerList[targetPlayerIndex];
+      }
+
+      //另外个干扰玩家,排除主人,自己,洗的对象
+      const otherPlayerList = allPlayerInfo.filter(player => player !== master && player !== targetPlayer && player !== keeperPlayer);
+      const otherPlayerIndex = random(otherPlayerList.length);
+      const otherPlayer = otherPlayerList[otherPlayerIndex];
+
+      //洗伪装
+      if (washMask === true)
+      {
+        targetPlayerRoleName = targetPlayer.maskRole.name;
+      }
+      //中毒或者酒鬼发动失败,则随机洗村民身份
+      else if (keeperPlayer.poison === true || drunkSkill === true)
+      {
+        //村民且不是洗衣妇且不是洗的2个人中的身份
+        const fakeRoleList = roleList.filter(role => role.group === 0 && role.id !== roleId && role.id !== otherPlayer.role.id && role.id !== targetPlayer.role.id);
+        const fakeRoleIndex = random(fakeRoleList.length);
+        const fakeRole = fakeRoleList[fakeRoleIndex];
+
+        targetPlayerRoleName = fakeRole.name;
+      }
+      //正常洗
+      else
+      {
+        targetPlayerRoleName = targetPlayer.role.name;
+      }
+
+      const skillPlayer = sortPlayer([targetPlayer, otherPlayer], allPlayerInfo);
+      const playerText = getPlayerInfoText([keeperPlayer], allPlayerInfo);
+      const skillPlayerText = getPlayerInfoText(skillPlayer, allPlayerInfo);
+
+      stepData.push
+      ({
+        type: "洗",
+        copyTitle: `请复制给：${playerText}`,
+        copyText: `今晚你得知的信息为：${skillPlayerText} 中有 ${targetPlayerRoleName}`,
+        title: "洗",
+        player: playerText,
+        text: "请发送给洗衣妇获取的信息"
+      });
+    }
+    //图书管理员
+    else if (roleId === "1")
+    {
+      let drunkSkill;
+
+      let targetPlayer;
+      let targetPlayerRoleName;
+
+      //中毒
+      if (keeperPlayer.poison === true)
+      {
+        const canWash = allPlayerInfo.some(player => player.role.group === 2 && player.maskRole.group === 1);
+
+        if (canWash === true)
+        {
+          const targetPlayerList = allPlayerInfo.filter(player => player.role.group === 2 && player.maskRole.group === 1);
+          const targetPlayerIndex = random(targetPlayerList.length);
+
+          targetPlayer = targetPlayerList[targetPlayerIndex];
+          targetPlayerRoleName = targetPlayer.maskRole.name;
+        }
+        //不能洗伪装,则洗狼人的村民身份为酒鬼
+        else
+        {
+          const targetPlayerList = allPlayerInfo.filter(player => player.role.group === 2);
+          const targetPlayerIndex = random(targetPlayerList.length);
+
+          targetPlayer = targetPlayerList[targetPlayerIndex];
+          targetPlayerRoleName = roleList.find(role => role.drunk === true).name;
+        }
+      }
+      //酒鬼
+      else if (isDrunk === true)
+      {
+        //如果外来者只有主人这一个酒鬼,则一定发动失败
+        if (assignRoleData.normalCount === 1)
+        {
+          drunkSkill = true;
+        }
+        else
+        {
+          drunkSkill = drunkRoll("normal", washPlayer) === false;
+        }
+
+        //酒鬼,随机洗村民和狼人中村民伪装的,洗为酒鬼
+        if (drunkSkill === true)
+        {
+          const targetPlayerList = allPlayerInfo.filter(player => player !== keeperPlayer && player !== master && (player.role.group === 0 || player.role.group === 2 && player.maskRole.group === 0));
+          const targetPlayerIndex = random(targetPlayerList.length);
+
+          targetPlayer = targetPlayerList[targetPlayerIndex];
+          targetPlayerRoleName = roleList.find(role => role.drunk === true).name;
+        }
+        //正常发动,正常发动时,能洗到主人的酒鬼身份
+        else
+        {
+          const targetPlayerList = allPlayerInfo.filter(player => player.role.group === 1 && player !== keeperPlayer);
+
+          if (targetPlayerList.length > 0)
+          {
+            const targetPlayerIndex = random(targetPlayerList.length);
+
+            targetPlayer = targetPlayerList[targetPlayerIndex];
+            targetPlayerRoleName = targetPlayer.role.name;
+          }
+        }
+      }
+      //正常发动,能洗到主人的酒鬼身份
+      else
+      {
+        const targetPlayerList = allPlayerInfo.filter(player => player.role.group === 1 && player !== keeperPlayer);
+
+        if (targetPlayerList.length > 0)
+        {
+          const targetPlayerIndex = random(targetPlayerList.length);
+
+          targetPlayer = targetPlayerList[targetPlayerIndex];
+          targetPlayerRoleName = targetPlayer.role.name;
+        }
+      }
+
+      //没有外来者
+      if (targetPlayer == null)
+      {
+        stepData.push
+        ({
+          type: "图",
+          copyTitle: `请复制给：${keeperPlayerText}`,
+          copyText: "今晚你得知的信息为：外来者只有你一人",
+          title: "图",
+          player: keeperPlayerText,
+          text: "请发送给图书管理员获取的信息"
+        });
+      }
+      else
+      {
+        //另外个干扰玩家,排除主人,自己,洗的对象
+        const otherPlayerList = allPlayerInfo.filter(player => player !== master && player !== targetPlayer && player !== keeperPlayer);
+        const otherPlayerIndex = random(otherPlayerList.length);
+        const otherPlayer = otherPlayerList[otherPlayerIndex];
+
+        const skillPlayer = sortPlayer([targetPlayer, otherPlayer], allPlayerInfo);
+        const skillPlayerText = getPlayerInfoText(skillPlayer, allPlayerInfo);
+
+        stepData.push
+        ({
+          type: "图",
+          copyTitle: `请复制给：${keeperPlayerText}`,
+          copyText: `今晚你得知的信息为：${skillPlayerText} 中有 ${targetPlayerRoleName}`,
+          title: "图",
+          player: keeperPlayerText,
+          text: "请发送给图书管理员获取的信息"
         });
       }
     }
@@ -1981,9 +2232,9 @@ const reboundDetermine = () =>
   const majorPlayer = alivePlayerByRole(allPlayerInfo, "12", true)[0]; //市长,包括酒鬼市长
 
   //酒鬼市长,则进行一次酒鬼判定
-  if (majorPlayer.role.id === "14")
+  if (majorPlayer.role.drunk === true)
   {
-    const result = drunkRoll(drunkConfig.superRole.includes("12") === true ? "super" : "normal");
+    const result = drunkRoll(drunkConfig.superRole.includes("12") === true ? "super" : "normal", majorPlayer);
 
     //酒鬼市长技能不发动,则不进行反弹判定
     if (result === false)
@@ -2002,7 +2253,7 @@ const reboundDetermine = () =>
   if (soldierPlayer && soldierPlayer.poison !== true)
   {
     //是否能发动技能,判定依据是,如果是酒鬼士兵,则掷骰子决定是否发动,否则一定发动
-    const activeSkill = soldierPlayer.role.id === "14" ? drunkRoll("normal") : true;
+    const activeSkill = soldierPlayer.role.drunk === true ? drunkRoll("normal", soldierPlayer) : true;
 
     //能发动技能,才继续做挡刀判定
     if (activeSkill === true)
