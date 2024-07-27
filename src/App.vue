@@ -114,7 +114,7 @@
           <el-button v-if="housekeeperPoisonCount > 0" type="warning" @click="housekeeperPoisonCount++">减少一瓶毒药</el-button>
         </template>
       </div>
-      <div v-if="isPlaying === true" class="operation-shortcut">
+      <div class="operation-shortcut">
         <el-button size="small" @click="roll">掷骰子(1-100)</el-button>
         <el-button size="small" @click="rollPlayer">掷存活玩家号码骰子</el-button>
         <el-button size="small" @click="drunkRoll(`normal`)">掷酒鬼普通技能骰子</el-button>
