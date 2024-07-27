@@ -47,7 +47,7 @@ export const roleList =
   },
   {
     id: "5",
-    name: "占卜师",
+    name: "预言家",
     group: 0,
     strong: true,
     info: true,
@@ -169,7 +169,7 @@ export const statusMap =
   3: "神罚",
   4: "枪杀",
   5: "反弹",
-  6: "自尽"
+  6: "传位"
 };
 
 export const defaultPlayer =
