@@ -60,14 +60,14 @@
                     </template>
                   </el-popover>
                 </div>
-                <el-popconfirm v-if="dayInfo.stepIndex === index" title="请确认该步骤的行动已经完成！" @confirm="nextStepInNight(dayInfo)">
+                <el-popconfirm v-if="isPlaying === true && dayInfo.stepIndex === index" title="请确认该步骤的行动已经完成！" @confirm="nextStepInNight(dayInfo)">
                   <template #reference>
                     <el-button size="small" type="primary">下一步</el-button>
                   </template>
                 </el-popconfirm>
               </div>
               <!--步骤结束-->
-              <div v-if="dayInfo.cancel !== true && dayIndex === dayInfo.dayIndex && dayType === `night` && dayInfo.stepIndex === 2" class="step-row" :data-active="dayInfo.stepIndex === 2">
+              <div v-if="isPlaying === true && dayInfo.cancel !== true && dayIndex === dayInfo.dayIndex && dayType === `night` && dayInfo.stepIndex === 2" class="step-row" :data-active="dayInfo.stepIndex === 2">
                 <el-popconfirm title="确定要天亮吗？" @confirm="nextStep">
                   <template #reference>
                     <el-button size="small" type="primary">天亮了</el-button>
@@ -76,7 +76,7 @@
               </div>
             </div>
            <!--入夜选项-->
-            <div v-if="dayIndex === dayInfo.dayIndex && dayType === `day`" class="day-operation-container">
+            <div v-if="isPlaying === true && dayIndex === dayInfo.dayIndex && dayType === `day`" class="day-operation-container">
               <el-popconfirm title="确定要入夜吗？" @confirm="nextStep">
                 <template #reference>
                   <el-button size="small" type="danger">入夜了</el-button>
@@ -215,7 +215,7 @@
           <el-button v-if="isPlaying === false" size="small" type="danger" @click="removePlayer(index)">移除</el-button>
           <template v-if="isPlaying === true">
             <!--设置克星-->
-            <el-dropdown v-if="player.role.id === `5` || (player.role.id === `13` && player.inherit === true && player.master.role.id === `5` )" trigger="click" @command="player => player.nemesis = true">
+            <el-dropdown v-if="player.role.id === `5` || (player.role.id === `13` && player.inherit === true && player.master.role.id === `5` )" trigger="click" @command="setNemesis">
               <el-button type="danger" size="small">克星</el-button>
               <template #dropdown>
                 <el-dropdown-menu>
@@ -962,6 +962,23 @@ const setPlayerRole = (roleId, player) =>
 
   player.role = roleList.find(role => role.id === roleId);
 };
+
+const setNemesis = player =>
+{
+  allPlayerInfo.forEach(player =>
+  {
+    delete player.nemesis;
+  });
+
+  player.nemesis = true;
+
+  const playerText = getPlayerInfoText([player], allPlayerInfo);
+
+  appendInfo
+  ({
+    text: `说书人将 ${playerText} 设置为预言家的克星`
+  });
+}
 
 //设置玩家状态(复活或者各种死亡)
 const setPlayerStatus = (player, status) =>
