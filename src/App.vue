@@ -50,7 +50,7 @@
                 <el-icon v-if="dayInfo.stepIndex === index" color="lightgreen"><Right/></el-icon>
                 <el-icon v-else-if="dayInfo.stepIndex > index" color="lightgreen"><Check/></el-icon>
                 <div class="step-content">
-                  <el-popover v-for="step in stepData" :key="step" :width="500" placement="right" :title="step.copyTitle" trigger="hover" :content="step.copyText">
+                  <el-popover v-for="step in stepData" :key="step" :width="500" :offset="100" :hide-after="0" placement="right" :title="step.copyTitle" trigger="hover" :content="step.copyText">
                     <template #reference>
                       <div class="step-content-row" @click="copyStepInfo(step)">
                         <span class="step-type-text">{{step.title}}</span>
@@ -265,7 +265,7 @@
             <!--枪杀-->
             <el-button v-if="dayIndex > 0 && hasAlivePlayerByRole(allPlayerInfo, `10`, true) && player.status === 0" size="small" @click="setPlayerStatus(player, 4)" color="#fff686">{{statusMap[4]}}</el-button>
             <!--反弹-->
-            <el-button v-if="dayIndex > 0 && hasAlivePlayerByRole(allPlayerInfo, `12`, true) && player.status === 0" size="small" @click="setPlayerStatus(player, 5)" color="#5876ff">{{statusMap[5]}}</el-button>
+            <el-button v-if="dayIndex > 0 && dayType === `night` && hasAlivePlayerByRole(allPlayerInfo, `12`, true) && player.status === 0" size="small" @click="setPlayerStatus(player, 5)" color="#5876ff">{{statusMap[5]}}</el-button>
           </template>
         </div>
       </div>
@@ -655,12 +655,12 @@ const badRoleAssignStatus = computed(() =>
 //邪恶阵营的伪装列表
 const maskRoleList = computed(() =>
 {
-  //所有非邪恶阵营未上场的角色,同时排除酒鬼
+  //所有非邪恶阵营未上场的角色,同时排除酒鬼,和场上酒鬼的酒鬼村民身份
   return roleList.filter(role =>
   {
     if (role.group !== 2 && role.drunk !== true)
     {
-      return allPlayerInfo.some(player => player.role.id === role.id) === false;
+      return allPlayerInfo.some(player => player.role.id === role.id || player.drunkRole?.id === role.id) === false;
     }
   });
 });
@@ -1391,6 +1391,11 @@ const createNightStepData = dayInfo =>
     }
   }
 
+  nextTick(() =>
+  {
+    scrollbar.value.wrapRef.scrollTop = scrollbar.value.wrapRef.scrollHeight;
+  });
+
   //相认
   function doKnow()
   {
@@ -1405,7 +1410,7 @@ const createNightStepData = dayInfo =>
       ({
         type: "认",
         player: "邪恶阵营",
-        copyTitle: "请粘贴进邪恶阵营频道",
+        copyTitle: "请点击后复制进邪恶阵营频道",
         copyText: `请互相认识：${playerText}`,
         title: "认",
         text: "请建立邪恶阵营频道并互相认识"
@@ -1452,7 +1457,7 @@ const createNightStepData = dayInfo =>
       ({
         type: "毒",
         player: "邪恶阵营",
-        copyTitle: "请粘贴进邪恶阵营频道",
+        copyTitle: "请点击后复制进邪恶阵营频道",
         copyText: `请选择下毒对象，今晚毒药数量：${poisonCount}，存活好人玩家有：${aliveGoodPlayerText}`,
         title: "毒",
         text: `请邪恶阵营选择下毒对象，并在右侧面板执行，今晚毒药数量：${poisonCount}`
@@ -1472,7 +1477,7 @@ const createNightStepData = dayInfo =>
       ({
         type: "谍",
         player: "邪恶阵营",
-        copyTitle: "请粘贴进邪恶阵营频道",
+        copyTitle: "请点击后复制进邪恶阵营频道",
         copyText: playerText,
         title: "谍",
         text: "请给邪恶阵营发送所有玩家身份"
@@ -1494,7 +1499,7 @@ const createNightStepData = dayInfo =>
       stepData.push
       ({
         type: "守",
-        copyTitle: `请复制给：${guardPlayerText}`,
+        copyTitle: `请点击后复制给：${guardPlayerText}`,
         copyText: `请选择要守护的玩家：${targetPlayerText}`,
         title: "守",
         player: guardPlayerText,
@@ -1514,7 +1519,7 @@ const createNightStepData = dayInfo =>
     ({
       type: "刀",
       player: "邪恶阵营",
-      copyTitle: "请粘贴进邪恶阵营频道",
+      copyTitle: "请点击后复制进邪恶阵营频道",
       copyText: `请选择夺魂对象，存活好人玩家有：${aliveGoodPlayerText}`,
       title: "刀",
       text: "请邪恶阵营选择夺魂对象并在右侧面板执行"
@@ -1819,7 +1824,7 @@ const createNightStepData = dayInfo =>
       stepData.push
       ({
         type: "洗",
-        copyTitle: `请复制给：${playerText}`,
+        copyTitle: `请点击后复制给：${playerText}`,
         copyText: `今晚你得知的信息为：${skillPlayerText} 中有 ${map.wash.targetPlayerRoleName}`,
         title: "洗",
         player: playerText,
@@ -1840,7 +1845,7 @@ const createNightStepData = dayInfo =>
         stepData.push
         ({
           type: "图",
-          copyTitle: `请复制给：${playerText}`,
+          copyTitle: `请点击后复制给：${playerText}`,
           copyText: "今晚你得知的信息为：没有外来者",
           title: "图",
           player: playerText,
@@ -1873,7 +1878,7 @@ const createNightStepData = dayInfo =>
         stepData.push
         ({
           type: "图",
-          copyTitle: `请复制给：${playerText}`,
+          copyTitle: `请点击后复制给：${playerText}`,
           copyText: `今晚你得知的信息为：${skillPlayerText} 中有 ${map.library.targetPlayerRoleName}`,
           title: "图",
           player: playerText,
@@ -1911,7 +1916,7 @@ const createNightStepData = dayInfo =>
       stepData.push
       ({
         type: "调",
-        copyTitle: `请复制给：${playerText}`,
+        copyTitle: `请点击后复制给：${playerText}`,
         copyText: `今晚你得知的信息为：${skillPlayerText} 中有 ${map.investigate.targetPlayerRoleName}`,
         title: "调",
         player: playerText,
@@ -1997,7 +2002,7 @@ const createNightStepData = dayInfo =>
         stepData.push
         ({
           type: "厨",
-          copyTitle: `请复制给：${playerText}`,
+          copyTitle: `请点击后复制给：${playerText}`,
           copyText: `今晚你得知的信息为：邪恶阵营连坐数为 ${count}对`,
           title: "厨",
           player: playerText,
@@ -2023,7 +2028,7 @@ const createNightStepData = dayInfo =>
           stepData.push
           ({
             type: "厨",
-            copyTitle: `请复制给：${playerText}`,
+            copyTitle: `请点击后复制给：${playerText}`,
             copyText: `今晚你得知的信息为：邪恶阵营连坐数为 ${count}对`,
             title: "厨",
             player: playerText,
@@ -2036,7 +2041,7 @@ const createNightStepData = dayInfo =>
           stepData.push
           ({
             type: "厨",
-            copyTitle: `请复制给：${playerText}`,
+            copyTitle: `请点击后复制给：${playerText}`,
             copyText: `今晚你得知的信息为：邪恶阵营连坐数为 ${repeatCount}对`,
             title: "厨",
             player: playerText,
@@ -2050,7 +2055,7 @@ const createNightStepData = dayInfo =>
         stepData.push
         ({
           type: "厨",
-          copyTitle: `请复制给：${playerText}`,
+          copyTitle: `请点击后复制给：${playerText}`,
           copyText: `今晚你得知的信息为：邪恶阵营连坐数为 ${repeatCount}对`,
           title: "厨",
           player: playerText,
@@ -2076,7 +2081,7 @@ const createNightStepData = dayInfo =>
       stepData.push
       ({
         type: "管",
-        copyTitle: `请复制给：${stepPlayerText}`,
+        copyTitle: `请点击后复制给：${stepPlayerText}`,
         copyText: `请选择你的主人：${targetPlayerText}`,
         title: "管",
         player: stepPlayerText,
@@ -2127,7 +2132,7 @@ const createNightStepData = dayInfo =>
         stepData.push
         ({
           type: "继",
-          copyTitle: `请复制给：${stepPlayerText}`,
+          copyTitle: `请点击后复制给：${stepPlayerText}`,
           copyText: `你的主人已经死亡，你继承了主人的身份：${masterRoleName}`,
           title: "继",
           player: stepPlayerText,
@@ -2297,7 +2302,7 @@ const createNightStepData = dayInfo =>
       stepData.push
       ({
         type: "洗",
-        copyTitle: `请复制给：${keeperPlayerText}`,
+        copyTitle: `请点击后复制给：${keeperPlayerText}`,
         copyText: `今晚你得知的信息为：${skillPlayerText} 中有 ${targetPlayerRoleName}`,
         title: "洗",
         player: keeperPlayerText,
@@ -2391,7 +2396,7 @@ const createNightStepData = dayInfo =>
         stepData.push
         ({
           type: "图",
-          copyTitle: `请复制给：${keeperPlayerText}`,
+          copyTitle: `请点击后复制给：${keeperPlayerText}`,
           copyText: "今晚你得知的信息为：外来者只有你一人",
           title: "图",
           player: keeperPlayerText,
@@ -2411,7 +2416,7 @@ const createNightStepData = dayInfo =>
         stepData.push
         ({
           type: "图",
-          copyTitle: `请复制给：${keeperPlayerText}`,
+          copyTitle: `请点击后复制给：${keeperPlayerText}`,
           copyText: `今晚你得知的信息为：${skillPlayerText} 中有 ${targetPlayerRoleName}`,
           title: "图",
           player: keeperPlayerText,
@@ -2492,7 +2497,7 @@ const createNightStepData = dayInfo =>
         stepData.push
         ({
           type: "调",
-          copyTitle: `请复制给：${keeperPlayerText}`,
+          copyTitle: `请复点击后制给：${keeperPlayerText}`,
           copyText: "今晚你得知的信息为：没有爪牙",
           title: "调",
           player: keeperPlayerText,
@@ -2522,7 +2527,7 @@ const createNightStepData = dayInfo =>
         stepData.push
         ({
           type: "调",
-          copyTitle: `请复制给：${keeperPlayerText}`,
+          copyTitle: `请点击后复制给：${keeperPlayerText}`,
           copyText: `今晚你得知的信息为：${skillPlayerText} 中有 ${targetPlayerRoleName}`,
           title: "调",
           player: keeperPlayerText,
@@ -2602,7 +2607,7 @@ const createNightStepData = dayInfo =>
         stepData.push
         ({
           type: "厨",
-          copyTitle: `请复制给：${keeperPlayerText}`,
+          copyTitle: `请点击后复制给：${keeperPlayerText}`,
           copyText: `今晚你得知的信息为：邪恶阵营连坐数为 ${count}对`,
           title: "厨",
           player: keeperPlayerText,
@@ -2628,7 +2633,7 @@ const createNightStepData = dayInfo =>
           stepData.push
           ({
             type: "厨",
-            copyTitle: `请复制给：${keeperPlayerText}`,
+            copyTitle: `请点击后复制给：${keeperPlayerText}`,
             copyText: `今晚你得知的信息为：邪恶阵营连坐数为 ${count}对`,
             title: "厨",
             player: keeperPlayerText,
@@ -2641,7 +2646,7 @@ const createNightStepData = dayInfo =>
           stepData.push
           ({
             type: "厨",
-            copyTitle: `请复制给：${keeperPlayerText}`,
+            copyTitle: `请点击后复制给：${keeperPlayerText}`,
             copyText: `今晚你得知的信息为：邪恶阵营连坐数为 ${repeatCount}对`,
             title: "厨",
             player: keeperPlayerText,
@@ -2655,7 +2660,7 @@ const createNightStepData = dayInfo =>
         stepData.push
         ({
           type: "厨",
-          copyTitle: `请复制给：${keeperPlayerText}`,
+          copyTitle: `请点击后复制给：${keeperPlayerText}`,
           copyText: `今晚你得知的信息为：邪恶阵营连坐数为 ${repeatCount}对`,
           title: "厨",
           player: keeperPlayerText,
@@ -2721,7 +2726,7 @@ const createNightStepData = dayInfo =>
       stepData.push
       ({
         type: "共",
-        copyTitle: `请复制给：${playerText}`,
+        copyTitle: `请点击后复制给：${playerText}`,
         copyText: `你今晚获得的信息为：${badCount}`,
         title: "共",
         player: playerText,
@@ -2797,7 +2802,7 @@ const createNightStepData = dayInfo =>
       stepData.push
       ({
         type: "预",
-        copyTitle: `请复制给：${playerText}`,
+        copyTitle: `请点击后复制给：${playerText}`,
         copyText: "请选择要调查的对象",
         title: "预",
         player: playerText,
@@ -2903,7 +2908,7 @@ const createNightStepData = dayInfo =>
         stepData.push
         ({
           type: "掘",
-          copyTitle: `请复制给：${playerText}`,
+          copyTitle: `请点击后复制给：${playerText}`,
           copyText: `今晚你挖掘了 ${targetPlayerText}，他的真实身份是 ${targetPlayerRoleName}`,
           title: "掘",
           player: playerText,
@@ -2943,7 +2948,7 @@ const createNightStepData = dayInfo =>
       stepData.push
       ({
         type: "鸦",
-        copyTitle: `请复制给：${playerText}`,
+        copyTitle: `请点击后复制给：${playerText}`,
         copyText: "你死了，请选择要你的乌鸦揭露的对象",
         title: "鸦",
         player: playerText,
@@ -3202,7 +3207,19 @@ const copyStepInfo = stepData =>
 {
   const {copyText} = stepData;
 
-  navigator.clipboard.writeText(copyText);
+  if (navigator.clipboard?.writeText)
+  {
+    navigator.clipboard.writeText(copyText);
+  }
+  else
+  {
+    const input = document.createElement("input");
+    input.value = copyText;
+    document.body.appendChild(input);
+    input.select();
+    document.execCommand("copy");
+    document.body.removeChild(input);
+  }
 
   ElMessage.success(`${copyText} 已经复制进粘贴板`);
 };
@@ -3216,11 +3233,44 @@ const copyMask = () =>
 
 const copyText = text =>
 {
-  navigator.clipboard.writeText(text);
+  if (navigator.clipboard?.writeText)
+  {
+    navigator.clipboard.writeText(text);
+  }
+  else
+  {
+    const input = document.createElement("input");
+    input.value = text;
+    document.body.appendChild(input);
+    input.select();
+    document.execCommand("copy");
+    document.body.removeChild(input);
+  }
 
   ElMessage.success(`${text} 已经复制进粘贴板`);
 };
 </script>
+
+<style lang="less">
+
+html
+{
+  background-color: #000000;
+}
+
+body
+{
+  > *
+  {
+    opacity: 0.03;
+  }
+
+  &:hover > *
+  {
+    opacity: 1;
+  }
+}
+</style>
 
 <style scoped lang="less">
 
@@ -3240,6 +3290,11 @@ const copyText = text =>
   color: #FFFFFF;
   background-color: black;
   overflow: auto;
+}
+
+.copy-input
+{
+  //visibility: hidden;
 }
 
 //操作部分

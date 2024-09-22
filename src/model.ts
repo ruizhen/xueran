@@ -190,22 +190,22 @@ export const defaultPlayer =
     name: "毛毛"
   },
   {
-    name: "丽华"
+    name: "提莫"
   },
   {
-    name: "馨怡"
+    name: "牧一"
   },
   {
-    name: "陈靖"
+    name: "单微子"
   },
   {
-    name: "耿耿"
+    name: "妍妍"
   },
   {
-    name: "陈总"
+    name: "康康"
   },
   {
-    name: "陈多肉"
+    name: "小双"
   },
   {
     name: "汶雨"
