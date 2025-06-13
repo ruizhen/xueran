@@ -122,226 +122,261 @@
       </div>
     </div>
     <!--玩家信息配置面板-->
-    <div class="config-container">
-      <div v-show="isPlaying === false" class="player-select">
-        <el-button v-for="player in defaultPlayer" :key="player" class="player-add-button" :type="allPlayerInfo.some(data => data.name === player.name) ? `success` : null" size="small" @click="addPlayer(player.name)">添加 {{player.name}}</el-button>
-      </div>
-      <div v-show="isPlaying === false" class="player-add-container">
-        <el-input v-model="newPlayer.name" size="small" placeholder="输入新玩家名字"/>
-        <el-button size="small" type="primary" @click="addPlayer">添加新玩家</el-button>
-      </div>
-      <!--说明-->
-      <template v-if="isPlaying === false">
-        <p class="info-text">洗衣妇技能获得的2个玩家中的干扰玩家，可能为任何身份(除了自己)</p>
-        <p class="info-text">图书管理员同上，且在中毒时,一定洗到狼人,且一定洗为狼人的外来者身份或者酒鬼(洗的狼人没有穿外来者伪装)，只有1个外来者且是酒鬼调查员的情况下，酒鬼技能一定发动失败</p>
-        <p class="info-text">调查员若中毒或酒鬼技能失败，则调查出来的2个玩家为完全随机。否则调查出来的干扰玩家为完全随机</p>
-        <p class="info-text">管家若继承主人身份时，若为F4(洗衣妇/图书管理员/调查员/厨师)身份，则以首夜的情况重新获取信息</p>
-        <p class="info-text">管家中毒不会影响继承，但视作继承后的身份中毒。未继承时中毒，白天可以视作没有主人。管家白天每次没有跟随主人投票或进行投票提名，则当晚邪恶阵营毒+1，且无上限</p>
-        <p class="info-text">没有爪牙时，不会有调查员和厨师。原本就没有外来者时，不会有图书管理员。外来者>=3或村民<3，则不会有男爵</p>
-      </template>
-      <!--洗衣妇洗伪装配置-->
-      <div class="assign-operation-container">
+    <el-scrollbar class="config-scroll">
+      <div class="config-container">
+        <div v-show="isPlaying === false" class="player-select">
+          <el-button v-for="player in defaultPlayer" :key="player" class="player-add-button" :type="allPlayerInfo.some(data => data.name === player.name) ? `success` : null" size="small" @click="addPlayer(player.name)">添加 {{player.name}}</el-button>
+        </div>
+        <div v-show="isPlaying === false" class="player-add-container">
+          <el-input v-model="newPlayer.name" size="small" placeholder="输入新玩家名字"/>
+          <el-button size="small" type="primary" @click="addPlayer">添加新玩家</el-button>
+        </div>
+        <!--说明-->
         <template v-if="isPlaying === false">
-          <span>洗衣妇中毒后判定洗出伪装信息的概率：</span>
-          <el-input-number v-model="washChance" class="number-input" size="small" :step="1" :precision="0" :step-strictly="true" :min="0" :max="100"/>
+          <p class="info-text">洗衣妇技能获得的2个玩家中的干扰玩家，可能为任何身份(除了自己)</p>
+          <p class="info-text">图书管理员同上，且在中毒时,一定洗到狼人,且一定洗为狼人的外来者身份或者酒鬼(洗的狼人没有穿外来者伪装)，只有1个外来者且是酒鬼调查员的情况下，酒鬼技能一定发动失败</p>
+          <p class="info-text">调查员若中毒或酒鬼技能失败，则调查出来的2个玩家为完全随机。否则调查出来的干扰玩家为完全随机</p>
+          <p class="info-text">管家若继承主人身份时，若为F4(洗衣妇/图书管理员/调查员/厨师)身份，则以首夜的情况重新获取信息</p>
+          <p class="info-text">管家中毒不会影响继承，但视作继承后的身份中毒。未继承时中毒，白天可以视作没有主人。管家白天每次没有跟随主人投票或进行投票提名，则当晚邪恶阵营毒+1，且无上限</p>
+          <p class="info-text">没有爪牙时，不会有调查员和厨师。原本就没有外来者时，不会有图书管理员。外来者>=3或村民<3，则不会有男爵</p>
         </template>
-        <span v-else>洗衣妇中毒后判定洗出伪装信息的概率：{{washChance}}%</span>
-      </div>
-      <!--管家配置-->
-      <div class="assign-operation-container">
-        <template v-if="isPlaying === false">
-          <span>管家能否继承主人身份(当主人死亡后)：</span><el-switch v-model="masterConfig.enabled" size="small"/>
-          <template v-if="masterConfig.enabled === false">
-            <span> 管家是否每天认主：</span><el-switch v-model="masterConfig.everyday" size="small"/>
+        <!--洗衣妇洗伪装配置-->
+        <div class="assign-operation-container">
+          <template v-if="isPlaying === false">
+            <span>洗衣妇中毒后判定洗出伪装信息的概率：</span>
+            <el-input-number v-model="washChance" class="number-input" size="small" :step="1" :precision="0" :step-strictly="true" :min="0" :max="100"/>
           </template>
-        </template>
-        <span v-else>
+          <span v-else>洗衣妇中毒后判定洗出伪装信息的概率：{{washChance}}%</span>
+        </div>
+        <!--管家配置-->
+        <div class="assign-operation-container">
+          <template v-if="isPlaying === false">
+            <span>管家能否继承主人身份(当主人死亡后)：</span><el-switch v-model="masterConfig.enabled" size="small"/>
+            <template v-if="masterConfig.enabled === false">
+              <span> 管家是否每天认主：</span><el-switch v-model="masterConfig.everyday" size="small"/>
+            </template>
+          </template>
+          <span v-else>
           {{masterConfig.enabled === true ? "管家继承主人身份" : "管家不继承主人身份"}}
           {{masterConfig.everyday === true ? "，每天认一次主人" : "，仅首夜认主人"}}
         </span>
-      </div>
-      <!--酒鬼配置-->
-      <div class="assign-operation-container">
-        <template v-if="isPlaying === false">
-          <span>酒鬼技能成功概率：</span>
-          <span>普通技能(除了超级技能外的)：</span>
-          <el-input-number v-model="drunkConfig.normal" class="number-input" size="small" :step="1" :precision="0" :step-strictly="true" :min="0" :max="100"/>
-          <span>超级技能({{drunkConfig.superRole.map(roleId => roleList.find(role => role.id === roleId).name).join(" | ")}})：</span>
-          <el-input-number v-model="drunkConfig.special" class="number-input" size="small" :step="1" :precision="0" :step-strictly="true" :min="0" :max="100"/>
-        </template>
-        <span v-else>酒鬼正确发动技能的概率：普通技能 {{drunkConfig.normal}}%，超级技能 {{drunkConfig.special}}%</span>
-      </div>
-      <!--弹刀配置-->
-      <div class="assign-operation-container">
-        <template v-if="isPlaying === false">
-          <span>弹刀概率：</span>
-          <span>市长(0则必然不会)：</span>
-          <el-input-number v-model="reboundConfig.self" class="number-input" size="small" :step="1" :precision="0" :step-strictly="true" :min="0"/>
-          <span>士兵(0则必然会)：</span>
-          <el-input-number v-model="reboundConfig.soldier" class="number-input" size="small" :step="1" :precision="0" :step-strictly="true" :min="0"/>
-        </template>
-        <template v-else>
-          <span v-if="reboundConfig.self == null || reboundConfig.self === 0">市长必然不会被弹刀，</span>
-          <span v-else>市长被弹刀相对基准概率为：{{reboundConfig.self}}%，</span>
-          <span v-if="reboundConfig.soldier == null || reboundConfig.soldier === 0">士兵必然会被弹刀</span>
-          <span v-else>士兵被弹刀相对基准概率为：{{reboundConfig.soldier}}%</span>
-        </template>
-      </div>
-      <div v-show="isPlaying === false" class="role-container">
-        <span>村民个数：</span>
-        <el-input-number v-model="assignRoleData.goodCount" class="number-input" size="small"  :step="1" :precision="0" :step-strictly="true" :min="3" :max="13"></el-input-number>
-        <span>外来者个数：</span>
-        <el-input-number v-model="assignRoleData.normalCount" class="number-input" size="small"  :step="1" :precision="0" :step-strictly="true" :min="0" :max="4"></el-input-number>
-        <span>爪牙个数：</span>
-        <el-input-number v-model="assignRoleData.badCount" class="number-input" size="small"  :step="1" :precision="0" :step-strictly="true" :min="0" :max="4"></el-input-number>
-      </div>
-      <p class="role-total">角色总人数：{{assignRoleCount}}，村民：{{assignRoleData.goodCount}}，外来者：{{assignRoleData.normalCount}}，爪牙：{{assignRoleData.badCount}}，小恶魔: 1<span v-if="roleErrorMessage" class="role-error-message">{{roleErrorMessage}}</span></p>
-      <!--玩家-->
-      <div class="player-container">
-        <div v-for="(player, index) in allPlayerInfo" :key="index" class="player-row" :data-status="player.status" :data-group="player.role?.group">
-          <span class="number">{{(index + 1).toString().padStart(2, "0")}}</span>
-          <span class="name">{{player.name}}{{player.nemesis === true ? "(克星)" : ""}}</span>
-          <!--设置角色-->
-          <el-select v-if="isPlaying === false" v-model="player.roleId" class="role-select" size="small" placeholder="选择角色" @change="id => setPlayerRole(id, player)">
-            <el-option v-for="role in roleList" :key="role" :label="role.name" :value="role.id"/>
-          </el-select>
-          <!--设置酒鬼角色-->
-          <el-select v-if="isPlaying === false && player.role?.id === `14`" v-model="player.drunkRoleId" class="role-select" size="small" placeholder="选择酒鬼角色" @change="id => {player.drunkRole = roleList.find(role => role.id === id); player.drunkRoleId = player.drunkRole.id;}">
-            <el-option v-for="role in roleList.filter(role => role.group === 0)" :key="role" :label="role.name" :value="role.id"/>
-          </el-select>
-          <span class="role" :data-role="player.role?.group"><el-icon v-if="player.status === 0 && (player.inheritDevil === true || player.role.devil === true || (player.inherit === true && player.master.role.devil === true))"><StarFilled /></el-icon>{{getRoleName(player)}}</span>
-          <span v-if="player.deadDayIndex == null" class="status">{{getStatusText(player.status)}}<span v-if="player.poison == true" class="poison">(中毒)</span></span>
-          <span v-else class="status">{{getStatusText(player.status)}}({{dayTitleText(player.deadDayIndex, player.deadDayType)}})<span v-if="player.poison == true" class="poison">(中毒)</span></span>
-          <el-button v-if="isPlaying === false" size="small" type="danger" @click="removePlayer(index)">移除</el-button>
-          <template v-if="isPlaying === true">
-            <!--设置克星-->
-            <el-dropdown v-if="player.role.id === `5` || (player.role.id === `13` && player.inherit === true && player.master.role.id === `5` )" trigger="click" @command="setNemesis">
-              <el-button type="danger" size="small">克星</el-button>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item v-for="player in allPlayerInfo" :key="player" :command="player">{{getPlayerInfoText([player], allPlayerInfo)}}</el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
-            <!--设置伪装-->
-            <el-dropdown v-if="dayIndex === 0 && player.status === 0 && player.role.group === 2" trigger="click" @command="role => player.maskRole = role">
-              <el-button type="warning" size="small">伪装</el-button>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item v-for="role in maskRoleList" :key="role" :command="role">{{role.name}}</el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
-            <!--管家认主-->
-            <el-dropdown v-if="player.status === 0 && player.role.id === `13`" trigger="click" @command="master => player.master = master">
-              <el-button type="primary" size="small">认主</el-button>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item v-for="player in masterPlayerList" :key="player" :command="player">{{getPlayerInfoText([player], allPlayerInfo)}}</el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
-            <!--传位-->
-            <el-dropdown v-if="dayIndex > 0 && dayType === `night` && player.status === 0 && (player.role.devil === true || player.inheritDevil === true) && inheritDevilPlayerList.length > 0" trigger="click" @command="inheritDevil">
-              <el-button color="#ff4ba7" size="small">传位</el-button>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item v-for="player in inheritDevilPlayerList" :key="player" :command="player">{{getPlayerInfoText([player], allPlayerInfo)}}</el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
-            <!--复活-->
-            <el-button v-if="player.status !== 0" size="small" @click="setPlayerStatus(player, 0)" type="success">复活</el-button>
-            <!--下毒-->
-            <el-button v-if="dayType === `night` && player.status === 0 && player.role.group !== 2" size="small" @click="poisonPlayer(player)" color="#5eff6e">{{player.poison === true ? "解毒" : "下毒"}}</el-button>
-            <!--守卫-->
-            <el-button v-if="dayIndex > 0 && dayType === `night` && hasAlivePlayerByRole(allPlayerInfo, `7`, true) && player.status === 0" size="small" @click="guardPlayer(player)" color="#389fff">{{player.guard === true ? "不守" : "守护"}}</el-button>
-            <!--处决-->
-            <el-button v-if="dayIndex > 0 && player.status === 0" size="small" @click="setPlayerStatus(player, 1)" color="#9b9cff">{{statusMap[1]}}</el-button>
-            <!--夺魂-->
-            <el-button v-if="dayIndex > 0 && dayType === `night` && player.status === 0 && player.role.devil !== true && player.inheritDevil !== true && (!(player.inherit === true && player.master.role.devil === true))" size="small" @click="setPlayerStatus(player, 2)" color="darkred">{{statusMap[2]}}</el-button>
-            <!--神罚-->
-            <el-button v-if="dayIndex > 0 && hasAlivePlayerByRole(allPlayerInfo, `9`, true) && player.status === 0 && player.role.id !== `9` && (player.role.group === 0 || player.role.id === `18` || (player.inherit === true && (player.master.role.group === 0 || player.master.role.id === `18`)))" size="small" @click="setPlayerStatus(player, 3)" color="#ffaac4">{{statusMap[3]}}</el-button>
-            <!--枪杀-->
-            <el-button v-if="dayIndex > 0 && hasAlivePlayerByRole(allPlayerInfo, `10`, true) && player.status === 0" size="small" @click="setPlayerStatus(player, 4)" color="#fff686">{{statusMap[4]}}</el-button>
-            <!--反弹-->
-            <el-button v-if="dayIndex > 0 && dayType === `night` && hasAlivePlayerByRole(allPlayerInfo, `12`, true) && player.status === 0" size="small" @click="setPlayerStatus(player, 5)" color="#5876ff">{{statusMap[5]}}</el-button>
+        </div>
+        <!--酒鬼配置-->
+        <div class="assign-operation-container">
+          <template v-if="isPlaying === false">
+            <span>酒鬼技能成功概率：</span>
+            <span>普通技能(除了超级技能外的)：</span>
+            <el-input-number v-model="drunkConfig.normal" class="number-input" size="small" :step="1" :precision="0" :step-strictly="true" :min="0" :max="100"/>
+            <span>超级技能({{drunkConfig.superRole.map(roleId => roleList.find(role => role.id === roleId).name).join(" | ")}})：</span>
+            <el-input-number v-model="drunkConfig.special" class="number-input" size="small" :step="1" :precision="0" :step-strictly="true" :min="0" :max="100"/>
+          </template>
+          <span v-else>酒鬼正确发动技能的概率：普通技能 {{drunkConfig.normal}}%，超级技能 {{drunkConfig.special}}%</span>
+        </div>
+        <!--弹刀配置-->
+        <div class="assign-operation-container">
+          <template v-if="isPlaying === false">
+            <span>弹刀概率：</span>
+            <span>市长(0则必然不会)：</span>
+            <el-input-number v-model="reboundConfig.self" class="number-input" size="small" :step="1" :precision="0" :step-strictly="true" :min="0"/>
+            <span>士兵(0则必然会)：</span>
+            <el-input-number v-model="reboundConfig.soldier" class="number-input" size="small" :step="1" :precision="0" :step-strictly="true" :min="0"/>
+          </template>
+          <template v-else>
+            <span v-if="reboundConfig.self == null || reboundConfig.self === 0">市长必然不会被弹刀，</span>
+            <span v-else>市长被弹刀相对基准概率为：{{reboundConfig.self}}%，</span>
+            <span v-if="reboundConfig.soldier == null || reboundConfig.soldier === 0">士兵必然会被弹刀</span>
+            <span v-else>士兵被弹刀相对基准概率为：{{reboundConfig.soldier}}%</span>
           </template>
         </div>
+        <div v-show="isPlaying === false" class="role-container">
+          <span>村民个数：</span>
+          <el-input-number v-model="assignRoleData.goodCount" class="number-input" size="small"  :step="1" :precision="0" :step-strictly="true" :min="3" :max="13"></el-input-number>
+          <span>外来者个数：</span>
+          <el-input-number v-model="assignRoleData.normalCount" class="number-input" size="small"  :step="1" :precision="0" :step-strictly="true" :min="0" :max="4"></el-input-number>
+          <span>爪牙个数：</span>
+          <el-input-number v-model="assignRoleData.badCount" class="number-input" size="small"  :step="1" :precision="0" :step-strictly="true" :min="0" :max="4"></el-input-number>
+        </div>
+        <p class="role-total">角色总人数：{{assignRoleCount}}，村民：{{assignRoleData.goodCount}}，外来者：{{assignRoleData.normalCount}}，爪牙：{{assignRoleData.badCount}}，小恶魔: 1<span v-if="roleErrorMessage" class="role-error-message">{{roleErrorMessage}}</span></p>
+        <!--玩家-->
+        <div class="player-container">
+          <div v-for="(player, index) in allPlayerInfo" :key="index" class="player-row" :data-status="player.status" :data-group="player.role?.group">
+            <span class="number">{{(index + 1).toString().padStart(2, "0")}}</span>
+            <span class="name">{{player.name}}{{player.nemesis === true ? "(克星)" : ""}}</span>
+            <!--设置角色-->
+            <el-select v-if="isPlaying === false" v-model="player.roleId" class="role-select" size="small" placeholder="选择角色" @change="id => setPlayerRole(id, player)">
+              <el-option v-for="role in roleList" :key="role" :label="role.name" :value="role.id"/>
+            </el-select>
+            <!--设置酒鬼角色-->
+            <span class="role" :data-role="player.role?.group"><el-icon v-if="player.status === 0 && (player.inheritDevil === true || player.role.devil === true || (player.inherit === true && player.master.role.devil === true))"><StarFilled /></el-icon>{{getRoleName(player)}}
+              <el-select v-if="isPlaying === false && player.role?.id === `14`" v-model="player.drunkRoleId" style="width:70px;" class="role-select" size="small" placeholder="选择酒鬼角色" @change="id => {player.drunkRole = roleList.find(role => role.id === id); player.drunkRoleId = player.drunkRole.id;}">
+                <el-option v-for="role in roleList.filter(role => role.group === 0)" :key="role" :label="role.name" :value="role.id"/>
+              </el-select>
+            </span>
+            <span v-if="player.deadDayIndex == null" class="status">{{getStatusText(player.status)}}<span v-if="player.poison == true" class="poison">(中毒)</span></span>
+            <span v-else class="status">{{getStatusText(player.status)}}({{dayTitleText(player.deadDayIndex, player.deadDayType)}})<span v-if="player.poison == true" class="poison">(中毒)</span></span>
+            <el-button v-if="isPlaying === false" size="small" type="danger" @click="removePlayer(index)">移除</el-button>
+            <template v-if="isPlaying === true">
+              <!--设置克星-->
+              <el-dropdown v-if="player.role.id === `5` || (player.role.id === `13` && player.inherit === true && player.master.role.id === `5` )" trigger="click" @command="setNemesis">
+                <el-button type="danger" size="small">克星</el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item v-for="player in allPlayerInfo" :key="player" :command="player">{{getPlayerInfoText([player], allPlayerInfo)}}</el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+              <!--设置伪装-->
+              <el-dropdown v-if="dayIndex === 0 && player.status === 0 && player.role.group === 2" trigger="click" @command="role => player.maskRole = role">
+                <el-button type="warning" size="small">伪装</el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item v-for="role in maskRoleList" :key="role" :command="role">{{role.name}}</el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+              <!--管家认主-->
+              <el-dropdown v-if="player.status === 0 && player.role.id === `13`" trigger="click" @command="master => player.master = master">
+                <el-button type="primary" size="small">认主</el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item v-for="player in masterPlayerList" :key="player" :command="player">{{getPlayerInfoText([player], allPlayerInfo)}}</el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+              <!--传位-->
+              <el-dropdown v-if="dayIndex > 0 && dayType === `night` && player.status === 0 && (player.role.devil === true || player.inheritDevil === true) && inheritDevilPlayerList.length > 0" trigger="click" @command="inheritDevil">
+                <el-button color="#ff4ba7" size="small">传位</el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item v-for="player in inheritDevilPlayerList" :key="player" :command="player">{{getPlayerInfoText([player], allPlayerInfo)}}</el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+              <!--复活-->
+              <el-button v-if="player.status !== 0" size="small" @click="setPlayerStatus(player, 0)" type="success">复活</el-button>
+              <!--下毒-->
+              <el-button v-if="dayType === `night` && player.status === 0 && player.role.group !== 2" size="small" @click="poisonPlayer(player)" color="#5eff6e">{{player.poison === true ? "解毒" : "下毒"}}</el-button>
+              <!--守卫-->
+              <el-button v-if="dayIndex > 0 && dayType === `night` && hasAlivePlayerByRole(allPlayerInfo, `7`, true) && player.status === 0" size="small" @click="guardPlayer(player)" color="#389fff">{{player.guard === true ? "不守" : "守护"}}</el-button>
+              <!--处决-->
+              <el-button v-if="dayIndex > 0 && player.status === 0" size="small" @click="setPlayerStatus(player, 1)" color="#9b9cff">{{statusMap[1]}}</el-button>
+              <!--夺魂-->
+              <el-button v-if="dayIndex > 0 && dayType === `night` && player.status === 0 && player.role.devil !== true && player.inheritDevil !== true && (!(player.inherit === true && player.master.role.devil === true))" size="small" @click="setPlayerStatus(player, 2)" color="darkred">{{statusMap[2]}}</el-button>
+              <!--神罚-->
+              <el-button v-if="dayIndex > 0 && hasAlivePlayerByRole(allPlayerInfo, `9`, true) && player.status === 0 && player.role.id !== `9` && (player.role.group === 0 || player.role.id === `18` || (player.inherit === true && (player.master.role.group === 0 || player.master.role.id === `18`)))" size="small" @click="setPlayerStatus(player, 3)" color="#ffaac4">{{statusMap[3]}}</el-button>
+              <!--枪杀-->
+              <el-button v-if="dayIndex > 0 && hasAlivePlayerByRole(allPlayerInfo, `10`, true) && player.status === 0" size="small" @click="setPlayerStatus(player, 4)" color="#fff686">{{statusMap[4]}}</el-button>
+              <!--反弹-->
+              <el-button v-if="dayIndex > 0 && dayType === `night` && hasAlivePlayerByRole(allPlayerInfo, `12`, true) && player.status === 0" size="small" @click="setPlayerStatus(player, 5)" color="#5876ff">{{statusMap[5]}}</el-button>
+            </template>
+          </div>
+        </div>
+        <div v-if="isPlaying === false">
+          <el-button v-if="!roleErrorMessage" type="primary" @click="assignRole">分配角色</el-button>
+          <el-button v-if="isPlaying === false && allPlayerInfo.some(player => player.role != null) && !roleErrorMessage" type="danger" @click="resetAssignRole">重置分配</el-button>
+        </div>
+        <div v-if="isPlaying === false && !roleErrorMessage">
+          <p style="margin-bottom: 4px;">指定角色配置</p>
+          <div class="role-select-container" :data-group="0">
+            <div v-for="role in roleList.filter(data => data.group === 0)" class="role-block" :data-active="assignRoleData.goodRole?.some(data => data.id === role.id)" @click="activeRole(role)">
+              <span>{{role.name}}</span>
+            </div>
+          </div>
+          <div class="role-select-container" :data-group="1">
+            <div v-for="role in roleList.filter(data => data.group === 1)" class="role-block" :data-active="assignRoleData.normalRole?.some(data => data.id === role.id)" @click.self="activeRole(role)">
+              <template v-if="role.id === `14`">
+                <span style="margin-right:4px;">{{role.name}}({{assignRoleData.drunkRole?.name}})</span>
+                <el-dropdown v-if="role.id === `14`" trigger="click" @command="role => {console.info(role);assignRoleData.drunkRole = role;}">
+                  <el-button type="warning" size="small">酒鬼身份</el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item v-for="role in roleList.filter(data => data.group === 0)" :key="role" :command="role">{{role.name}}</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+              </template>
+              <span v-else>{{role.name}}</span>
+            </div>
+          </div>
+          <div class="role-select-container" :data-group="2">
+            <div v-for="role in roleList.filter(data => data.group === 2 && data.devil !== true)" class="role-block" :data-active="assignRoleData.badRole?.some(data => data.id === role.id)" @click="activeRole(role)">
+              <span>{{role.name}}</span>
+            </div>
+          </div>
+          <div style="margin-top: 4px;">
+            <el-button type="primary" @click="assignRoleByTemplate">按照该角色模板分配给玩家</el-button>
+          </div>
+        </div>
+        <!--角色分配情况-->
+        <div v-if="allPlayerInfo.some(player => player.role?.group === 0) === true" class="assign-role-container">
+          <div class="row">
+            <div v-for="role in allPlayerInfo.filter(player => player.role?.group === 0).map(player => player.role).sort((roleA, roleB) => roleA.strong === true ? -1 : (roleB.strong === true ? 1 : (roleA.info === true ? -1 : (roleB.info === true ? 1 : -1))))" :key="role" class="role-block" data-role="good" :data-strong="role.strong">
+              <el-icon v-if="role.info === true" class="info" color="green"><View/></el-icon>
+              <el-icon v-if="role.poison === true" class="poison" color="#C396ED"><HotWater/></el-icon>
+              <el-icon v-if="role.f4 === true" class="f4" color="#5295ff"><Hide/></el-icon>
+              <el-icon v-if="role.absolute === true" class="absolute" color="#67ff4f"><Flag/></el-icon>
+              <span class="role-name">{{role.name}}</span>
+            </div>
+          </div>
+          <div class="row">
+            <div class="info-column">
+              <span class="info-column-text" style="color: gold">强神：{{allPlayerInfo.filter(player => player.role?.strong).length}}</span>
+            </div>
+            <div class="info-column">
+              <el-icon :size="20" color="#67ff4f"><Flag/></el-icon>
+              <span style="color: #67ff4f;margin-right: 10px;">铁好人：{{allPlayerInfo.filter(player => player.role?.absolute === true).length}}</span>
+            </div>
+            <div class="info-column">
+              <el-icon :size="20" color="#5295ff"><Hide/></el-icon>
+              <span style="color: #5295ff;">首夜信息位(F4)：{{allPlayerInfo.filter(player => player.role?.f4).length}}</span>
+            </div>
+            <div class="info-column">
+              <el-icon :size="20" color="green"><View/></el-icon>
+              <span style="color: green;">信息位：{{allPlayerInfo.filter(player => player.role?.info).length}}</span>
+            </div>
+            <div class="info-column">
+              <el-icon :size="20" color="#C396ED"><HotWater/></el-icon>
+              <span style="color: #C396ED;">吃天毒数：{{allPlayerInfo.filter(player => player.role?.poison).length}}</span>
+            </div>
+          </div>
+          <div class="row">
+            <div v-for="role in allPlayerInfo.filter(player => player.role?.group === 1).map(player => player.role)" :key="role" class="role-block" data-role="normal">
+              <span class="role-name">{{role.name}}</span>
+            </div>
+          </div>
+          <div class="row">
+            <div v-for="role in allPlayerInfo.filter(player => player.role?.group === 2).map(player => player.role)" :key="role" class="role-block" data-role="bad">
+              <span class="role-name">{{role.name}}</span>
+            </div>
+          </div>
+          <div class="row" v-if="badRoleAssignStatus !== 0">
+            <span v-if="badRoleAssignStatus % 2 === 1" style="color: red">共情者两侧均有邪恶阵营！</span>
+            <span v-if="badRoleAssignStatus >= 10" style="color: red">邪恶阵营连坐数>1！</span>
+          </div>
+        </div>
+        <div v-if="isPlaying === true && dayIndex === 0" class="mask-select-container">
+          <p class="mask-title">请选择要分发给邪恶阵营使用的的伪装：</p>
+          <div class="mask-row-container">
+            <p v-for="mask in maskRoleList" :key="mask" class="mask-block" :data-group="mask.group" @click="selectMaskList.has(mask) ? selectMaskList.delete(mask) : selectMaskList.add(mask)">{{mask.name}}<el-icon v-if="selectMaskList.has(mask)" color="lightgreen"><Check/></el-icon></p>
+          </div>
+          <div class="mask-row-container">
+            <el-button size="small" type="primary" @click="copyMask">点击复制选择的伪装</el-button>
+          </div>
+        </div>
+        <div class="assign-operation-container">
+          <el-popconfirm v-if="isPlaying === false && allPlayerInfo.every(player => player.role != null && !(player.role === `14` && player.drunkRoll == null)) && !roleErrorMessage" title="确定要开始游戏吗？" @confirm="startPlay">
+            <template #reference>
+              <el-button type="success">开始游戏</el-button>
+            </template>
+          </el-popconfirm>
+          <el-popconfirm v-if="isPlaying === true" title="确定要结束游戏吗？" @confirm="endPlay">
+            <template #reference>
+              <el-button type="danger">结束游戏</el-button>
+            </template>
+          </el-popconfirm>
+        </div>
       </div>
-      <div v-if="isPlaying === false">
-        <el-button v-if="!roleErrorMessage" type="primary" @click="assignRole">分配角色</el-button>
-        <el-button v-if="isPlaying === false && allPlayerInfo.some(player => player.role != null) && !roleErrorMessage" type="danger" @click="resetAssignRole">重置分配</el-button>
-      </div>
-      <!--角色分配情况-->
-      <div v-if="allPlayerInfo.some(player => player.role?.group === 0) === true" class="assign-role-container">
-        <div class="row">
-          <div v-for="role in allPlayerInfo.filter(player => player.role?.group === 0).map(player => player.role).sort((roleA, roleB) => roleA.strong === true ? -1 : (roleB.strong === true ? 1 : (roleA.info === true ? -1 : (roleB.info === true ? 1 : -1))))" :key="role" class="role-block" data-role="good" :data-strong="role.strong">
-            <el-icon v-if="role.info === true" class="info" color="green"><View/></el-icon>
-            <el-icon v-if="role.poison === true" class="poison" color="#C396ED"><HotWater/></el-icon>
-            <el-icon v-if="role.f4 === true" class="f4" color="#5295ff"><Hide/></el-icon>
-            <el-icon v-if="role.absolute === true" class="absolute" color="#67ff4f"><Flag/></el-icon>
-            <span class="role-name">{{role.name}}</span>
-          </div>
-        </div>
-        <div class="row">
-          <div class="info-column">
-            <span class="info-column-text" style="color: gold">强神：{{allPlayerInfo.filter(player => player.role?.strong).length}}</span>
-          </div>
-          <div class="info-column">
-            <el-icon :size="20" color="#67ff4f"><Flag/></el-icon>
-            <span style="color: #67ff4f;margin-right: 10px;">铁好人：{{allPlayerInfo.filter(player => player.role?.absolute === true).length}}</span>
-          </div>
-          <div class="info-column">
-            <el-icon :size="20" color="#5295ff"><Hide/></el-icon>
-            <span style="color: #5295ff;">首夜信息位(F4)：{{allPlayerInfo.filter(player => player.role?.f4).length}}</span>
-          </div>
-          <div class="info-column">
-            <el-icon :size="20" color="green"><View/></el-icon>
-            <span style="color: green;">信息位：{{allPlayerInfo.filter(player => player.role?.info).length}}</span>
-          </div>
-          <div class="info-column">
-            <el-icon :size="20" color="#C396ED"><HotWater/></el-icon>
-            <span style="color: #C396ED;">吃天毒数：{{allPlayerInfo.filter(player => player.role?.poison).length}}</span>
-          </div>
-        </div>
-        <div class="row">
-          <div v-for="role in allPlayerInfo.filter(player => player.role?.group === 1).map(player => player.role)" :key="role" class="role-block" data-role="normal">
-            <span class="role-name">{{role.name}}</span>
-          </div>
-        </div>
-        <div class="row">
-          <div v-for="role in allPlayerInfo.filter(player => player.role?.group === 2).map(player => player.role)" :key="role" class="role-block" data-role="bad">
-            <span class="role-name">{{role.name}}</span>
-          </div>
-        </div>
-        <div class="row" v-if="badRoleAssignStatus !== 0">
-          <span v-if="badRoleAssignStatus % 2 === 1" style="color: red">共情者两侧均有邪恶阵营！</span>
-          <span v-if="badRoleAssignStatus >= 10" style="color: red">邪恶阵营连坐数>1！</span>
-        </div>
-      </div>
-      <div v-if="isPlaying === true && dayIndex === 0" class="mask-select-container">
-        <p class="mask-title">请选择要分发给邪恶阵营使用的的伪装：</p>
-        <div class="mask-row-container">
-          <p v-for="mask in maskRoleList" :key="mask" class="mask-block" :data-group="mask.group" @click="selectMaskList.has(mask) ? selectMaskList.delete(mask) : selectMaskList.add(mask)">{{mask.name}}<el-icon v-if="selectMaskList.has(mask)" color="lightgreen"><Check/></el-icon></p>
-        </div>
-        <div class="mask-row-container">
-          <el-button size="small" type="primary" @click="copyMask">点击复制选择的伪装</el-button>
-        </div>
-      </div>
-      <div class="assign-operation-container">
-        <el-popconfirm v-if="isPlaying === false && allPlayerInfo.every(player => player.role != null && !(player.role === `14` && player.drunkRoll == null)) && !roleErrorMessage" title="确定要开始游戏吗？" @confirm="startPlay">
-          <template #reference>
-            <el-button type="success">开始游戏</el-button>
-          </template>
-        </el-popconfirm>
-        <el-popconfirm v-if="isPlaying === true" title="确定要结束游戏吗？" @confirm="endPlay">
-          <template #reference>
-            <el-button type="danger">结束游戏</el-button>
-          </template>
-        </el-popconfirm>
-      </div>
-    </div>
+    </el-scrollbar>
   </div>
 </template>
 
@@ -885,6 +920,180 @@ const assignRole = () =>
   }
 }
 
+const activeRole = role =>
+{
+  const {group, id} = role;
+
+  if (group === 0)
+  {
+    if (assignRoleData.goodRole == null || assignRoleData.goodRole.some(data => data.id === id) === false)
+    {
+      if (assignRoleData.goodRole == null)
+      {
+        assignRoleData.goodRole = [];
+      }
+
+      assignRoleData.goodRole.push(role);
+    }
+    else
+    {
+      assignRoleData.goodRole.splice(assignRoleData.goodRole.indexOf(role), 1);
+    }
+  }
+  else if (group === 1)
+  {
+    if (assignRoleData.normalRole == null || assignRoleData.normalRole.some(data => data.id === id) === false)
+    {
+      if (assignRoleData.normalRole == null)
+      {
+        assignRoleData.normalRole = [];
+      }
+
+      assignRoleData.normalRole.push(role);
+    }
+    else
+    {
+      assignRoleData.normalRole.splice(assignRoleData.normalRole.indexOf(role), 1);
+    }
+  }
+  else
+  {
+    if (assignRoleData.badRole == null ||  assignRoleData.badRole.some(data => data.id === id) === false)
+    {
+      if (assignRoleData.badRole == null)
+      {
+        assignRoleData.badRole = [];
+      }
+
+      assignRoleData.badRole.push(role);
+    }
+    else
+    {
+      assignRoleData.badRole.splice(assignRoleData.badRole.indexOf(role), 1);
+    }
+  }
+};
+
+const assignRoleByTemplate = () =>
+{
+  //先清空玩家数据
+  allPlayerInfo.forEach(player =>
+  {
+    // delete player.skillDone;
+    delete player.roleId;
+    delete player.drunkRoleId;
+    delete player.master;
+    delete player.inherit;
+    delete player.guard;
+    delete player.poison;
+    delete player.deadDayIndex;
+    delete player.deadDayType;
+    delete player.role;
+    delete player.maskRole;
+    delete player.drunkRole;
+    delete player.inheritDevil;
+    delete player.nemesis;
+    delete player.status;
+  });
+
+  const allRoleList = assignRoleData.goodRole.concat(assignRoleData.normalRole).concat(assignRoleData.badRole);
+  allRoleList.push(roleList.find(data => data.devil === true));
+
+  const count = allRoleList.length;
+
+  const queenPlayerList = ["单微子", "三妹"];
+
+  for (let i = 0; i < allPlayerInfo.length; i++)
+  {
+    const player = allPlayerInfo[i];
+
+    if (queenPlayerList.includes(player.name) === true)
+    {
+      let roleIndex = random(allRoleList.length);
+      let good = true;
+      if (allRoleList[roleIndex].group === 2)
+      {
+        const result = random(100) + 1;
+
+        if (result <= 30)
+        {
+          good = false;
+        }
+      }
+
+      if (good === true)
+      {
+        const result = random(100) + 1;
+
+        if (result <= 60)
+        {
+          let roleList = allRoleList.filter(data => data.group === 0 && data.strong === true);
+
+          if (roleList.length < 2)
+          {
+            roleList = allRoleList.filter(data => data.group === 0 && (data.info === true || data.strong === true));
+          }
+
+          if (roleList.length === 0)
+          {
+            roleList = allRoleList.filter(data => data.group === 0);
+          }
+
+          const index = random(roleList.length);
+          const role = roleList[index];
+
+          roleIndex = allRoleList.indexOf(role);
+        }
+        else
+        {
+          const roleList = allRoleList.filter(data => data.group !== 2);
+
+          const index = random(roleList.length);
+          const role = roleList[index];
+
+          roleIndex = allRoleList.indexOf(role);
+        }
+      }
+
+      player.role = allRoleList[roleIndex];
+      player.roleId = player.role.id;
+
+      //若是酒鬼,则分配指定的酒鬼身份
+      if (player.role.drunk === true)
+      {
+        player.drunkRole = assignRoleData.drunkRole;
+        player.drunkRoleId = player.drunkRole.id;
+      }
+
+      allRoleList.splice(roleIndex, 1);
+    }
+  }
+
+  for (let i = 0; i < count; i++)
+  {
+    const player = allPlayerInfo[i];
+
+    if (queenPlayerList.includes(player.name) === false)
+    {
+      const roleIndex = random(allRoleList.length);
+
+      player.role = allRoleList[roleIndex];
+      player.roleId = player.role.id;
+
+      //若是酒鬼,则分配指定的酒鬼身份
+      if (player.role.drunk === true)
+      {
+        player.drunkRole = assignRoleData.drunkRole;
+        player.drunkRoleId = player.drunkRole.id;
+      }
+
+      allRoleList.splice(roleIndex, 1);
+    }
+  }
+
+  console.info("本次分配角色情况", JSON.parse(JSON.stringify(allPlayerInfo)));
+};
+
 const startPlay = () =>
 {
   //开始游戏时,重置玩家状态
@@ -916,6 +1125,8 @@ const startPlay = () =>
   isPlaying.value = true;
 
   dayInfoList.length = 0;
+
+  console.info("本次游戏开始");
 
   startTimer();
 
@@ -3584,6 +3795,11 @@ body
   }
 }
 
+.config-scroll
+{
+  flex: 1;
+}
+
 //配置部分
 .config-container
 {
@@ -3656,7 +3872,7 @@ body
         justify-content: center;
         align-items: center;
         border-radius: 8px;
-        border-width: 2px;
+        border-width: px;
         border-style: solid;
 
         &[data-strong="true"]
@@ -3971,7 +4187,7 @@ body
 
       .role-select
       {
-        width: 100px;
+        width: 80px;
       }
 
       .el-button
@@ -4035,6 +4251,72 @@ body
   .number-input
   {
     width: 90px;
+  }
+}
+
+.role-select-container
+{
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 4px;
+
+  &[data-group="0"]
+  {
+    .role-block
+    {
+      border-color: @good-color;
+
+      &[data-active="true"]
+      {
+        opacity: 1;
+        color: @good-color;
+      }
+    }
+  }
+
+  &[data-group="1"]
+  {
+    .role-block
+    {
+      border-color: @normal-color;
+
+      &[data-active="true"]
+      {
+        opacity: 1;
+        color: @normal-color;
+      }
+    }
+  }
+
+  &[data-group="2"]
+  {
+    .role-block
+    {
+      border-color: @bad-color;
+
+      &[data-active="true"]
+      {
+        opacity: 1;
+        color: @bad-color;
+      }
+    }
+  }
+
+  .role-block
+  {
+    padding: 8px;
+    border-width: 1px;
+    border-style: solid;
+    color: white;
+    cursor: pointer;
+    opacity: 0.5;
+
+    span
+    {
+      pointer-events: none;
+      user-select: none;
+    }
   }
 }
 </style>

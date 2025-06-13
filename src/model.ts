@@ -181,6 +181,9 @@ export const defaultPlayer =
     name: "王丹敏"
   },
   {
+    name: "陈多肉"
+  },
+  {
     name: "崔瑞"
   },
   {
@@ -190,25 +193,16 @@ export const defaultPlayer =
     name: "毛毛"
   },
   {
-    name: "提莫"
-  },
-  {
-    name: "牧一"
-  },
-  {
     name: "单微子"
   },
   {
     name: "妍妍"
   },
   {
-    name: "康康"
+    name: "三妹"
   },
   {
-    name: "小双"
-  },
-  {
-    name: "汶雨"
+    name: "贾鑫"
   },
 ];
 
